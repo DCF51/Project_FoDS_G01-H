@@ -10,26 +10,39 @@ to access these from the code use '../[folder name]/[file name]'
 
 To clone the repository to your own computer:
 1. go to the right directory
+  
   e.g. cd ~/Documents/FoDS
+
 2. clone online repository to that folder
+  
   git clone https://github.com/DCF51/FoDS_Project_G01-H.git
 
 To add changes to github:
 1. go to the right directory
+  
   e.g. cd ~/Documents/FoDS/FoDS_Project_G01-H
-4. check status of the directory (what you modified, what is ready for a commit...)
+
+2. check status of the directory (what you modified, what is ready for a commit...)
+
   git status
-5. commit changes
+
+3. commit changes
+
   git add [file name] --> to add a new file
+
   git commit -m [comment on the commit] --> to change existing directory 
-6. Add the local changes to the online repository
+
+4. Add the local changes to the online repository
+
   git push -f origin [branch name]
   
 To navigate branches:
 1. create a new branch (only if necessary, e.g. we could create a branch for a part of the code that 2 people are working on simultaneously, meaning where there are two completely different versions)
+
   git branch [branch name] e.g. branch1
-2. chose branch
+
+2. chose branch/change 'active' branch
+
   git checkout [branch name]
+
   [branch name] could be 'main', 'branch1' etc.
-3. change 'active' branch
-  git checkout [branch name]
