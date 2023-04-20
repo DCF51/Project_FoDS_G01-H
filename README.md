@@ -30,7 +30,9 @@ To add changes to github:
 
   git add [file name] --> to add a new file
 
-  git commit -m [comment on the commit] --> to change existing directory 
+  git commit -f [file name] -m [comment on the commit] --> to change existing file
+  
+  git commit -a -m [comment on the commit] --> to change all files in the directory
 
 4. Add the local changes to the online repository
 
