@@ -15,7 +15,7 @@ To clone the repository to your own computer:
 
 2. clone online repository to that folder
   
-  git clone https://github.com/DCF51/FoDS_Project_G01-H.git
+  git clone https://github.com/DCF51/Project_FoDS_G01-H.git
 
 To add changes to github:
 1. go to the right directory
