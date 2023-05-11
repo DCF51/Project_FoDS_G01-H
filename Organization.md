@@ -7,7 +7,7 @@ Motivation: Anne-Sophie
 Data Description: Dominik
 
 ### Models
-Random Forest: Valentina
-Logistic Regression: Anne-Sophie
-Support Vector Machine: Moreno
-K-nearest neighbour: Dominik
+Random Forest: Valentina <br>
+Logistic Regression: Anne-Sophie <br>
+Support Vector Machine: Moreno <br>
+K-nearest neighbour: Dominik 
