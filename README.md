@@ -21,7 +21,7 @@ To clone the repository to your own computer:
 To add changes to github:
 1. go to the right directory
   
-> e.g. cd ~/Documents/FoDS/FoDS_Project_G01-H
+> e.g. cd ~/Documents/FoDS/Project_FoDS_G01-H
 
 2. check status of the directory (what you modified, what is ready for a commit...)
 
