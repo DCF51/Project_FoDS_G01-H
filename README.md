@@ -32,7 +32,11 @@ To add changes to github:
 
   git commit -f [file name] -m [comment on the commit] --> to change existing file
   
-  git commit -a -m [comment on the commit] --> to change all files in the directory
+  git commit -a -m "[comment on the commit]" --> to change all files in the directory
+  
+  you can also do this if you have a longer comment:
+  
+  git commit -a --> a text window opens --> write your comments on any line without a # in front --> press "ESC" then ":wq" to exit
 
 4. Add the local changes to the online repository
 
