@@ -28,14 +28,10 @@ To add changes to github:
 
 3. commit changes
 
-  git add [file name] --> to add a new file
-
-  git commit -f [file name] -m [comment on the commit] --> to change existing file
-  
-  git commit -a -m "[comment on the commit]" --> to change all files in the directory
-  
-  you can also do this if you have a longer comment:
-  
+  git add [file name] --> to add a new file <br>
+	git commit -f [file name] -m [comment on the commit] --> to change existing file <br>
+  git commit -a -m "[comment on the commit]" --> to change all files in the directory <br>
+  you can also do this if you have a longer comment: <br>
   git commit -a --> a text window opens --> write your comments on any line without a # in front --> press "ESC" then ":wq" to exit
 
 4. Add the local changes to the online repository
@@ -49,6 +45,5 @@ To navigate branches:
 
 2. chose branch/change 'active' branch
 
-  git checkout [branch name]
-
+  git checkout [branch name] <br>
   [branch name] could be 'main', 'branch1' etc.
