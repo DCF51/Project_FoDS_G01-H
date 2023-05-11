@@ -13,10 +13,22 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-# import data
+# Import data       --------------------------------------------------
 
 
-# define datatypes
+# Define datatypes  --------------------------------------------------
 
 
-# ...
+# Data description  --------------------------------------------------
+# Shape and meaning of dataframe -- df.info(), df.shape(), df.columns, df.head()
+
+# Datatypes -- df.info() and df.dtypes
+
+# Missing Data -- df.isna().sum()
+
+# Brief summary of extremes/means/medians -- df.describe()
+
+# Check for duplicate rows -- df.duplicated()
+
+
+#...
