@@ -48,3 +48,7 @@ To navigate branches:
 
 > git checkout [branch name] <br>
   [branch name] could be 'main', 'branch1' etc.
+
+To download changes from github to the local machine:
+
+> git pull
