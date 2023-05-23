@@ -176,22 +176,22 @@ print('Training set size: {}, test set size: {}'.format(len(X_train), len(X_test
 # here no loop is required and Scaling can be done outside the loop
 
 # ––––––––––––––––––––––––––––––  SStratified K-fold cross validator  ––––––––––––––––––––––––––––––
-# Hyperparameters for the split and preparation (Stratified K-fold cross validator)
-n_splits = 10
-skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+#Nicht vollständig!
+rf_classifier = RandomForestClassifier(n_estimators=100)
+kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+accuracy_scores = []
 
-#loop over splits should then be done in the === Model === section using:
-"""
-for train_i, test_i in skf.split(X, y):
+for train_index, test_index in kfold.split(X, y):
+    X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+    y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
-    # Get the relevant subsets for training and testing
-    X_test  = X.iloc[test_i]
-    y_test  = y.iloc[test_i]
-    X_train = X.iloc[train_i]
-    y_train = y.iloc[train_i]
+    rf_classifier.fit(X_train, y_train)
+    y_pred = rf_classifier.predict(X_test)
 
-    note: scaling has to be done inside the loop
-"""
+    accuracy = accuracy_score(y_test, y_pred)
+    accuracy_scores.append(accuracy)
+
+mean_accuracy = np.mean(accuracy_scores)
 # ==============================  Standardizing/Scaling  ==============================
 sc = StandardScaler()
 #create copies like in the tutorial to avoid inplace operations
