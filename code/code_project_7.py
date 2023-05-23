@@ -17,6 +17,8 @@ from sklearn.svm import SVC, NuSVC, LinearSVC
     # for svm we have different methods see: https://scikit-learn.org/stable/modules/svm.html
 # metrics
 from sklearn.metrics import r2_score, mean_squared_error, roc_curve, confusion_matrix, auc
+#Label encoder
+from sklearn.preprocessing import LabelEncoder
 # other
 import warnings
 
