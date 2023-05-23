@@ -25,7 +25,20 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # ==============================  Functions  ==============================
-#only if needed (probably from homeworks/tutorials)
+
+# Utility function to plot the diagonal line
+def add_identity(axes, *line_args, **line_kwargs):
+    identity, = axes.plot([], [], *line_args, **line_kwargs)
+    def callback(axes):
+        low_x, high_x = axes.get_xlim()
+        low_y, high_y = axes.get_ylim()
+        low = max(low_x, low_y)
+        high = min(high_x, high_y)
+        identity.set_data([low, high], [low, high])
+    callback(axes)
+    axes.callbacks.connect('xlim_changed', callback)
+    axes.callbacks.connect('ylim_changed', callback)
+    return axes
 
 def evaluation_metrics(clf, y, X, ax,legend_entry='my legendEntry'):
     """
@@ -48,7 +61,7 @@ def evaluation_metrics(clf, y, X, ax,legend_entry='my legendEntry'):
     :param legend_entry: the legend entry that should be displayed on the plot
     :type legend_entry: string
 
-    :return: comfusion matrix comprising the
+    :return: confusion matrix comprising the
              true positives (tp),
              true negatives  (tn),
              false positives (fp),
@@ -61,14 +74,25 @@ def evaluation_metrics(clf, y, X, ax,legend_entry='my legendEntry'):
 
     # Calculate the confusion matrix given the predicted and true labels
     tn, fp, fn, tp = confusion_matrix(y, y_test_pred).ravel()
+    
+    print(':) Successfully implemented the confusion matrix!')
 
+    print('Confusion matrix:\n\t  |y_true = 0\t|y_true = 1')
+    print('----------|-------------|------------')
+    print('y_pred = 0|  ' + str(tp) + '\t\t|' + str(fp))
+    print('y_pred = 1|  ' + str(fn) + '\t\t|' + str(tn))
+
+
+     # Check for denominator of zero
+    def safe_divide(numerator, denominator):
+        return numerator / denominator if denominator != 0 else 0
 
     # Calculate the evaluation metrics
-    precision   = tp/(tp+fp)
-    specificity = tn/(tn+fp)
-    accuracy    = (tp+tn)/(tp+tn+fp+fn)
-    recall      = tp/(tp+fn)
-    f1          = tp/(tp+0.5*(fn+fp))
+    precision = safe_divide(tp, (tp + fp))
+    recall = safe_divide(tp, (tp + fn))
+    f1_score = safe_divide((tp), (tp + (0.5*(fn + fp))))
+    specificity = safe_divide(tn, (tn + fp))
+    accuracy = safe_divide((tp+tn), (tp + tn + fp + fn))
 
     # Get the roc curve using a sklearn function
     y_test_predict_proba  = clf.predict_proba(X)
@@ -81,8 +105,7 @@ def evaluation_metrics(clf, y, X, ax,legend_entry='my legendEntry'):
     # you want to.
     ax.plot(fp_rates, tp_rates, label = 'Fold {}'.format(legend_entry))
 
-    return [accuracy,precision,recall,specificity,f1, roc_auc]
-
+    return [accuracy, precision, recall, specificity, f1_score, roc_auc]
 
 # ==============================  Import data  ==============================
 data = pd.read_csv(
@@ -165,52 +188,79 @@ data_e = data[columns_to_keep]
 X = data.copy().drop(columns='stroke')
 y = data['stroke']
 
-# We have two options for the split: "normal" train_test_split() or StratifiedKFold()
-# ––––––––––––––––––––––––––––––  "Normal" split  ––––––––––––––––––––––––––––––
-#Hyperparameters for "normal split"
-test_size = 0.2
-
-# Splitting
-X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42, test_size=test_size)
-print('Training set size: {}, test set size: {}'.format(len(X_train), len(X_test)))
-# here no loop is required and Scaling can be done outside the loop
-
 # ––––––––––––––––––––––––––––––  SStratified K-fold cross validator  ––––––––––––––––––––––––––––––
-#Nicht vollständig!
-rf_classifier = RandomForestClassifier(n_estimators=100)
+
 kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 accuracy_scores = []
 
-for train_index, test_index in kfold.split(X, y):
-    X_train, X_test = X.iloc[train_index], X.iloc[test_index]
-    y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+# Prepare the performance overview data frame
+df_performance = pd.DataFrame(columns = ['fold','clf','accuracy','precision','recall',
+                                         'specificity','F1','roc_auc'])
 
-    rf_classifier.fit(X_train, y_train)
-    y_pred = rf_classifier.predict(X_test)
-
-    accuracy = accuracy_score(y_test, y_pred)
-    accuracy_scores.append(accuracy)
-
-mean_accuracy = np.mean(accuracy_scores)
-# ==============================  Standardizing/Scaling  ==============================
-sc = StandardScaler()
-#create copies like in the tutorial to avoid inplace operations
-X_train_sc, X_test_sc = X_train.copy(), X_test.copy()
-
-X_train_sc[num_cols] = sc.fit_transform(X_train[num_cols])
-X_test_sc[num_cols] = sc.transform(X_test[num_cols])
+# Use this counter to save your performance metrics for each crossvalidation fold
+# also plot the roc curve for each model and fold into a joint subplot
+fold = 0
+fig,axs = plt.subplots(1,2,figsize=(9, 4))
 
 # ==============================  Models  ==============================
 # Be careful that we have different names for our different dataframes (e.g. X_train_LR and X_train_RF)
 
-# ––––––––––––––––––––––––––––––  Logistic Regression  ––––––––––––––––––––––––––––––
-LR = LogisticRegression()
+for train_index, test_index in kfold.split(X, y):
+    X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+    y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+    
+    # ----------------------------  Standardizing/Scaling  ---------------------------------
+    sc = StandardScaler()
+    #create copies like in the tutorial to avoid inplace operations
+    X_train_sc, X_test_sc = X_train.copy(), X_test.copy()
 
-# ––––––––––––––––––––––––––––––  Random Forest  ––––––––––––––––––––––––––––––
-RF = RandomForestClassifier()
+    X_train_sc[num_cols] = sc.fit_transform(X_train[num_cols])
+    X_test_sc[num_cols] = sc.transform(X_test[num_cols])
+    
+    # ––––––––––––––––––––––––––––––  Random Forest  ––––––––––––––––––––––––––––––
+    rf_classifier = RandomForestClassifier(random_state=1) 
+    #rf_classifier = RandomForestClassifier(n_estimators=100)
+    #Fit the model
+    rf_classifier.fit(X_train_sc, y_train)
+    y_pred = rf_classifier.predict(X_test)
 
-# ––––––––––––––––––––––––––––––  Decision Tree  ––––––––––––––––––––––––––––––
-DT = DecisionTreeClassifier()
+    #accuracy = accuracy_scores(y_test, y_pred)
+    #accuracy_scores.append(accuracy)
+    
+    # ––––––––––––––––––––––––––––––  Logistic Regression  ––––––––––––––––––––––––––––––
+    lr_classifier = LogisticRegression()
+    lr_classifier.fit(X_train_sc, y_train)
+    
+    
+    # ––––––––––––––––––––––––––––––  Decision Tree  ––––––––––––––––––––––––––––––
+    DT = DecisionTreeClassifier()
 
-# ––––––––––––––––––––––––––––––  Support Vector Machine  ––––––––––––––––––––––––––––––
-SVM = SVC() #or NuSVC()/ LinearSVC(), for Moreno to decide which one fits best
+    # ––––––––––––––––––––––––––––––  Support Vector Machine  ––––––––––––––––––––––––––––––
+    SVM = SVC() #or NuSVC()/ LinearSVC(), for Moreno to decide which one fits best
+    
+    # ––––––––––––––––––––––––––––––  Evaluate your classifiers  ––––––––––––––––––––––––––––––
+    eval_metrics = evaluation_metrics(lr_classifier, y_test, X_test_sc, axs[0],legend_entry=str(fold))
+    df_performance.loc[len(df_performance),:] = [fold,'Logistic Regression'] + eval_metrics
+
+    eval_metrics_RF = evaluation_metrics(rf_classifier, y_test, X_test_sc, axs[1],legend_entry=str(fold))
+    df_performance.loc[len(df_performance), :] = [fold, 'Random Forest'] + eval_metrics_RF
+    
+    # increase counter for folds
+    fold += 1
+    
+# Edit the plot and make it nice
+model_names = ['Logistic Regression','Random Forest']
+for i,ax in enumerate(axs):
+    ax.set_xlabel("FPR")
+    ax.set_ylabel("TPR")
+    add_identity(ax, color="r", ls="--",label = 'random\nclassifier')
+    ax.set_title(f"ROC curve {model_names[i]}")
+    ax.grid(True, linestyle = "--", linewidth = 0.5, alpha = 0.7)
+    ax.legend(loc="lower right")
+
+#mean_accuracy = np.mean(accuracy_scores)
+
+# ===========================  Summarize the folds  ================================
+print(df_performance.groupby(by = 'clf').agg(['mean', 'std']))
+
+
