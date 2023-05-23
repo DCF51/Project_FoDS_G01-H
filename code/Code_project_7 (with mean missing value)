@@ -118,10 +118,16 @@ print('There are ', data.shape[0],'rows in the data.')
 # Missing Data -- df.isna().sum()
 print('missing values:')
 print(data.isna().sum()) ###bmi has 201 missing values
-data = data.dropna(subset=['bmi']) #This drops the rows which have a missing value in bmi 
+# Calculate the mean or median of the "bmi" feature
+bmi_mean = data['bmi'].mean()
+bmi_median = data['bmi'].median()
+print(bmi_mean)
+print(bmi_median)
+# Replace the missing values with the mean or median
+data['bmi'].fillna(bmi_mean, inplace=True) 
+print(data.isna().sum())
 
 # Brief summary of extremes/means/medians -- df.describe()
-
 print(data.describe())
 
 # Check for duplicate rows -- df.duplicated()
