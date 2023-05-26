@@ -5,6 +5,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 # data split and standardizing(/scaling)
 from sklearn.model_selection import train_test_split, StratifiedKFold, KFold #je nachdem ob wir KFold brauchen, das weglassen
 from sklearn.preprocessing import StandardScaler
@@ -180,6 +181,27 @@ for col in boolean_cols:
 columns_to_keep = num_cols + cate_cols + boolean_cols
 data_e = data[columns_to_keep]
 
+
+# ==============================  Data Visualization  ==============================
+
+age_distribution = sns.histplot(x = data['age'], color = 'blue', bins=1, binwidth=1)
+age_distribution.set(xlabel = 'Age', ylabel = 'Number of Patients', title = 'Age Distribution')
+plt.grid(True)
+age_distribution.set_axisbelow(True)
+age_distribution.set_zorder(-1)
+
+bmi_distribution = sns.histplot(x = data['bmi'], color = 'blue', bins=1, binwidth=1)
+bmi_distribution.set(xlabel = 'BMI', ylabel = 'Number of Patients', title = 'BMI Distribution')
+plt.grid(True)
+bmi_distribution.set_axisbelow(True)
+bmi_distribution.set_zorder(-1)
+
+glucose_level_distribution = sns.histplot(x = data['avg_glucose_level'], color = 'blue', bins=1, binwidth=1)
+glucose_level_distribution.set(xlabel = 'Average Glucose Level', ylabel = 'Number of Patients', title = 'Glucose Level Distribution')
+plt.grid(True)
+glucose_level_distribution.set_axisbelow(True)
+glucose_level_distribution.set_zorder(-1)
+
 # ==============================  Feature selection  ==============================
 # don't know what exactly to use here yet
 
@@ -196,6 +218,8 @@ accuracy_scores = []
 # Prepare the performance overview data frame
 df_performance = pd.DataFrame(columns = ['fold','clf','accuracy','precision','recall',
                                          'specificity','F1','roc_auc'])
+
+all_importance = pd.DataFrame(index=range(0, 5), columns=X.columns)
 
 # Use this counter to save your performance metrics for each crossvalidation fold
 # also plot the roc curve for each model and fold into a joint subplot
@@ -228,9 +252,17 @@ for train_index, test_index in kfold.split(X, y):
     #accuracy_scores.append(accuracy)
     
     # ––––––––––––––––––––––––––––––  Logistic Regression  ––––––––––––––––––––––––––––––
-    lr_classifier = LogisticRegression()
-    lr_classifier.fit(X_train_sc, y_train)
+    log_reg_classifier = LogisticRegression()
+    log_reg_classifier.fit(X_train_sc, y_train)
     
+    # Make predictions
+    y_pred_log_reg = log_reg_classifier.predict(X_test)
+    
+     # Calculate feature importance
+    coefficients = log_reg_classifier.coef_
+    importance = np.abs(coefficients)
+    importance_scores = (importance / np.sum(importance))
+    all_importance.loc[fold] = importance_scores
     
     # ––––––––––––––––––––––––––––––  Decision Tree  ––––––––––––––––––––––––––––––
     DT = DecisionTreeClassifier()
@@ -239,7 +271,7 @@ for train_index, test_index in kfold.split(X, y):
     SVM = SVC() #or NuSVC()/ LinearSVC(), for Moreno to decide which one fits best
     
     # ––––––––––––––––––––––––––––––  Evaluate your classifiers  ––––––––––––––––––––––––––––––
-    eval_metrics = evaluation_metrics(lr_classifier, y_test, X_test_sc, axs[0],legend_entry=str(fold))
+    eval_metrics = evaluation_metrics(log_reg_classifier, y_test, X_test_sc, axs[0],legend_entry=str(fold))
     df_performance.loc[len(df_performance),:] = [fold,'Logistic Regression'] + eval_metrics
 
     eval_metrics_RF = evaluation_metrics(rf_classifier, y_test, X_test_sc, axs[1],legend_entry=str(fold))
@@ -259,8 +291,28 @@ for i,ax in enumerate(axs):
     ax.legend(loc="lower right")
 
 #mean_accuracy = np.mean(accuracy_scores)
-
+   
+    
 # ===========================  Summarize the folds  ================================
 print(df_performance.groupby(by = 'clf').agg(['mean', 'std']))
 
+display(all_importance)
 
+# Visualize the normalized feature importance across the five folds and add error bar to indicate the std
+fig, ax = plt.subplots(figsize=(18, 6))
+
+ax.bar(np.arange(importance_scores.shape[1]), all_importance.mean(), yerr=all_importance.std())
+ax.set_xticks(np.arange(importance_scores.shape[1]), X.columns.tolist(), rotation=45)
+ax.set_title("Normalized feature importance for LR across 5 folds", fontsize=20)
+plt.xlabel('Risk Factors', fontsize=16)
+plt.ylabel("Normalized feature importance", fontsize=16)
+plt.show()
+
+# ==============================  Models  ==============================
+# Be careful that we have different names for our different dataframes (e.g. X_train_LR and X_train_RF)
+
+# ––––––––––––––––––––––––––––––  Decision Tree  ––––––––––––––––––––––––––––––
+DT = DecisionTreeClassifier()
+
+# ––––––––––––––––––––––––––––––  Support Vector Machine  ––––––––––––––––––––––––––––––
+SVM = SVC() #or NuSVC()/ LinearSVC(), for Moreno to decide which one fits best
