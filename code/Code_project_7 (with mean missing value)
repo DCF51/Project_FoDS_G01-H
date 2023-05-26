@@ -126,7 +126,7 @@ data['smoking_status'] = pd.Categorical(data['smoking_status'])
 
 #change 'ever_married' to boolean
 data['ever_married'] = data['ever_married'].map({'Yes': True, 'No': False})
-data['ever_married'].astype(bool)
+data['ever_married']=data['ever_married'].astype(bool)
 
 # ==============================  Data description  ==============================
 # Shape and meaning of dataframe -- df.info(), df.shape[], df.columns, df.head()
@@ -210,6 +210,18 @@ glucose_level_distribution.set_zorder(-1)
 X = data.copy().drop(columns='stroke')
 y = data['stroke']
 
+# ======================Normal Spkir or K-Fold?========================
+class_counts = data['stroke'].value_counts()
+class_proportions = data['stroke'].value_counts(normalize=True)
+
+print("Class Counts:")
+print(class_counts)
+
+print("\nClass Proportions:")
+print(class_proportions)
+
+#So we can see there are 4861 of non-stroke and 249 with stroke. So the majority has no stroke. In the class proportions we can see the porportion of 'Flase' is 0.9513 --> 95.13% of the data. The porportion of 'True' is 0.0487 --> 4.87% of the data
+==>highly imbalanced: So stratified K-Fold Cross-Valdidator would be the better option
 # ––––––––––––––––––––––––––––––  SStratified K-fold cross validator  ––––––––––––––––––––––––––––––
 
 kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
@@ -248,8 +260,8 @@ for train_index, test_index in kfold.split(X, y):
     rf_classifier.fit(X_train_sc, y_train)
     y_pred = rf_classifier.predict(X_test)
 
-    #accuracy = accuracy_scores(y_test, y_pred)
-    #accuracy_scores.append(accuracy)
+    accuracy = accuracy_score(y_test, y_pred)
+    accuracy_scores.append(accuracy)
     
     # ––––––––––––––––––––––––––––––  Logistic Regression  ––––––––––––––––––––––––––––––
     log_reg_classifier = LogisticRegression()
@@ -290,7 +302,7 @@ for i,ax in enumerate(axs):
     ax.grid(True, linestyle = "--", linewidth = 0.5, alpha = 0.7)
     ax.legend(loc="lower right")
 
-#mean_accuracy = np.mean(accuracy_scores)
+mean_accuracy = np.mean(accuracy_scores)
    
     
 # ===========================  Summarize the folds  ================================
