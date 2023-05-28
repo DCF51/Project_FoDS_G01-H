@@ -329,6 +329,21 @@ plt.xlabel('Risk Factors', fontsize=16)
 plt.ylabel("Normalized feature importance", fontsize=16)
 plt.show()
 
+# ================================ Feature importance for Random Forest =================
+feature_importance = rf_model.feature_importances_
+
+# Plot feature importance
+plt.figure(figsize=(8, 6))
+plt.barh(X_train.columns, feature_importance)
+plt.xlabel('Feature Importance')
+plt.ylabel('Features')
+plt.title('Random Forest Feature Importance')
+plt.show()
+
+# Store feature importance in the performance overview data frame
+df_performance['feature_importance'] = feature_importance
+
+
 # ==============================  Models  ==============================
 # Be careful that we have different names for our different dataframes (e.g. X_train_LR and X_train_RF)
 
