@@ -231,12 +231,19 @@ print(class_proportions)
 kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 accuracy_scores = []
 
-#Hyperparameter Tuning 
+#Hyperparameter Tuning FIRST USE THESE AFTER DEFINE THE BEST PARAMETERS
 param_grid = {
     'n_estimators': [100, 200, 300],
     'max_depth': [None, 5, 10],
     'min_samples_split': [2, 5, 10],
     'max_features': ['auto','sqrt', 'log2']
+}
+# Majority parameter values
+majority_params = {
+    'max_depth': 5,
+    'max_features': 'auto',
+    'min_samples_split': 2,
+    'n_estimators': 100
 }
 
 # Prepare the performance overview data frame
@@ -265,16 +272,32 @@ for train_index, test_index in kfold.split(X, y):
     X_train_sc[num_cols] = sc.fit_transform(X_train[num_cols])
     X_test_sc[num_cols] = sc.transform(X_test[num_cols])
     
-     # ––––––––––––––––––––––––––––––  Random Forest  ––––––––––––––––––––––––––––––
+    # ––––––––––––––––––––––––––––––  Random Forest  FIRST FOR PREDICTING BEST PARAMETERS ––––––––––––––––––––––––––––––
     rf_classifier = GridSearchCV(RandomForestClassifier(random_state=1),param_grid,cv=kfold)
     
     #Fit the model
     rf_classifier.fit(X_train_sc, y_train)
     y_pred = rf_classifier.predict(X_test)
-
+    # Get the best parameters --> Needed for the best parameters
+    best_params = rf_classifier.best_params_
+    best_params_list.append(best_params)  # Store the best parameters
+    # Use the best parameters to create the final model
+    rf_model = RandomForestClassifier(random_state=1, **best_params)
+    y_pred = rf_model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
     accuracy_scores.append(accuracy)
     
+    # ––––––––––––––––––––––––––––––  Random Forest  ––––––––––––––––––––––––––––––
+    rf_model = RandomForestClassifier(random_state=1, **majority_params)
+    rf_model.fit(X_train_sc, y_train)
+    
+    
+    #y_pred = rf_classifier.predict(X_test)
+    #y_pred = rf_model.predict(X_test)
+    y_pred = rf_model.predict(X_test_sc)
+    
+    accuracy = accuracy_score(y_test, y_pred)
+    accuracy_scores.append(accuracy)
     # ––––––––––––––––––––––––––––––  Logistic Regression  ––––––––––––––––––––––––––––––
     log_reg_classifier = LogisticRegression()
     log_reg_classifier.fit(X_train_sc, y_train)
@@ -282,7 +305,7 @@ for train_index, test_index in kfold.split(X, y):
     # Make predictions
     y_pred_log_reg = log_reg_classifier.predict(X_test)
     
-     # Calculate feature importance
+    # Calculate feature importance
     coefficients = log_reg_classifier.coef_
     importance = np.abs(coefficients)
     importance_scores = (importance / np.sum(importance))
@@ -317,6 +340,7 @@ for i,ax in enumerate(axs):
 mean_accuracy = np.mean(accuracy_scores)
    
 #===========================Best Parameter for Hyperparameter tuning ==============
+#This is only needed in the beginning--> WITH THIS WE CAN TAKE THE BEST PARAMETERS FOR THE CODE ABOVE.
 best_params_list
 
 # Create a dictionary to store the majority values for each parameter
