@@ -22,6 +22,9 @@ from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_score, r
 #Label encoder
 from sklearn.preprocessing import LabelEncoder
 # other
+from collections import Counter
+
+
 import warnings
 
 warnings.filterwarnings('ignore')
@@ -313,7 +316,28 @@ for i,ax in enumerate(axs):
 
 mean_accuracy = np.mean(accuracy_scores)
    
-    
+#===========================Best Parameter for Hyperparameter tuning ==============
+best_params_list
+
+# Create a dictionary to store the majority values for each parameter
+majority_values = {}
+
+# Iterate over the parameters in the first parameter dictionary
+for param in best_params_list[0]:
+    # Create a list to store the parameter values
+    param_values = [params[param] for params in best_params_list]
+    # Count the occurrences of each value
+    param_counter = Counter(param_values)
+    # Find the majority value(s)
+    majority_value = [value for value, count in param_counter.items() if count == max(param_counter.values())]
+    # Store the majority value(s) in the dictionary
+    majority_values[param] = majority_value
+
+# Print the majority values
+print("Majority Values:")
+for param, value in majority_values.items():
+    print(f"{param}: {value}")
+#As we can see here these are the parameters which appear as the best in the majority of the folds --> So we can take these values for the k-fold crossvalidation
 # ===========================  Summarize the folds  ================================
 print(df_performance.groupby(by = 'clf').agg(['mean', 'std']))
 
