@@ -227,6 +227,14 @@ print(class_proportions)
 kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 accuracy_scores = []
 
+#Hyperparameter Tuning 
+param_grid = {
+    'n_estimators': [100, 200, 300],
+    'max_depth': [None, 5, 10],
+    'min_samples_split': [2, 5, 10],
+    'max_features': ['auto','sqrt', 'log2']
+}
+
 # Prepare the performance overview data frame
 df_performance = pd.DataFrame(columns = ['fold','clf','accuracy','precision','recall',
                                          'specificity','F1','roc_auc'])
@@ -253,9 +261,9 @@ for train_index, test_index in kfold.split(X, y):
     X_train_sc[num_cols] = sc.fit_transform(X_train[num_cols])
     X_test_sc[num_cols] = sc.transform(X_test[num_cols])
     
-    # ––––––––––––––––––––––––––––––  Random Forest  ––––––––––––––––––––––––––––––
-    rf_classifier = RandomForestClassifier(random_state=1) 
-    #rf_classifier = RandomForestClassifier(n_estimators=100)
+     # ––––––––––––––––––––––––––––––  Random Forest  ––––––––––––––––––––––––––––––
+    rf_classifier = GridSearchCV(RandomForestClassifier(random_state=1),param_grid,cv=kfold)
+    
     #Fit the model
     rf_classifier.fit(X_train_sc, y_train)
     y_pred = rf_classifier.predict(X_test)
