@@ -400,3 +400,265 @@ DT = DecisionTreeClassifier()
 
 # ––––––––––––––––––––––––––––––  Support Vector Machine  ––––––––––––––––––––––––––––––
 SVM = SVC() #or NuSVC()/ LinearSVC(), for Moreno to decide which one fits best
+ # Import necessary libraries
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from sklearn.metrics import confusion_matrix
+    from sklearn.decomposition import PCA
+    from sklearn.metrics import ConfusionMatrixDisplay
+    from sklearn.svm import SVC
+
+    # This creates an SVM classifier
+    clf_svm = SVC()  #
+    clf_svm.fit(X_train_sc,
+                y_train)  # After this step there's a trained SVM model that can be used for making predictions on new data
+
+    from sklearn.svm import SVC
+    from sklearn.model_selection import GridSearchCV
+
+    # Define the parameter grid
+    param_grid = {
+        'C': [0.1, 1, 10],
+        'kernel': ['linear', 'rbf', 'poly'],
+        'gamma': ['scale', 'auto'],
+        'degree': [2, 3, 4]
+    }
+
+    # Define the scoring types
+    scoring_types = ['accuracy', 'precision', 'recall', 'f1']
+
+    # Create the SVC model
+    svc = SVC()
+
+    for scoring_type in scoring_types:
+        # Create the GridSearchCV object with the specific scoring type
+        grid_search = GridSearchCV(estimator=svc, param_grid=param_grid, cv=5, scoring=scoring_type, refit=False)
+
+        # Fit the GridSearchCV object to the data
+        grid_search.fit(X_train_sc, y_train)
+
+        # Get the best parameters and best score
+        best_params = grid_search.best_params_
+        best_score = grid_search.best_score_
+
+        # Print the scoring type, best parameters, and best score
+        print("Scoring Type:", scoring_type)
+        print("Best Parameters:", best_params)
+        print("Best Score:", best_score)
+        print("---------------------")
+
+from sklearn.svm import SVC
+# Create the SVC model
+svc = SVC(C=0.1, degree=2, gamma='scale', kernel='linear')
+
+# Fit the model to the training data
+svc.fit(X_train_sc, y_train)
+
+# Predict the labels for the test set
+y_pred = svc.predict(X_test_sc)
+
+# Calculate the confusion matrix
+cm = confusion_matrix(y_test, y_pred)
+
+# Create a ConfusionMatrixDisplay object and plot the confusion matrix
+disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+disp.plot()
+
+# Show the plot
+plt.show()
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
+from sklearn.decomposition import PCA
+from sklearn.metrics import ConfusionMatrixDisplay
+from sklearn.svm import NuSVC
+from sklearn.model_selection import GridSearchCV
+
+# This creates an SVM classifier
+clf_svm = NuSVC(nu=0.07)
+clf_svm.fit(X_train_sc, y_train)
+
+# Define the parameter grid
+param_grid = {
+    'nu': [0.05, 0.06, 0.07],
+    'kernel': ['linear', 'rbf', 'poly'],
+    'gamma': ['scale', 'auto'],
+    'degree': [2, 3, 4]
+}
+
+# Create the NuSVC model
+nusvc = NuSVC()
+
+from sklearn.svm import NuSVC
+
+# Create the NuSVC model
+nusvc = NuSVC()
+
+for scoring_type in scoring_types:
+    # Create the GridSearchCV object with the specific scoring type
+    grid_search = GridSearchCV(estimator=nusvc, param_grid=param_grid, cv=5, scoring=scoring_type, refit=False)
+
+    # Fit the GridSearchCV object to the data
+    grid_search.fit(X_train_sc, y_train)
+
+    # Get the best parameters and best score
+    best_params = grid_search.best_params_
+    best_score = grid_search.best_score_
+
+    # Print the scoring type, best parameters, and best score
+    print("Scoring Type:", scoring_type)
+    print("Best Parameters:", best_params)
+    print("Best Score:", best_score)
+    print("---------------------")
+
+# Create the NuSVC model with the best parameters
+nusvc = NuSVC(nu=0.07, degree=2, gamma='auto', kernel='rbf')
+
+# Fit the model to the training data
+nusvc.fit(X_train_sc, y_train)
+
+# Predict the labels for the test set
+y_pred = nusvc.predict(X_test_sc)
+
+# Calculate the confusion matrix
+cm = confusion_matrix(y_test, y_pred)
+
+# Create a ConfusionMatrixDisplay object and plot the confusion matrix
+disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+disp.plot()
+
+# Show the plot
+plt.show()
+
+from sklearn.model_selection import cross_val_score
+
+# Create the SVC model
+svc = SVC(C=0.1, degree=2, gamma='scale', kernel='linear')
+
+# Perform cross-validation
+scores = cross_val_score(svc, X_train_sc, y_train, cv=5, scoring='accuracy')
+
+# Print the cross-validation scores
+print("Cross-Validation Scores:", scores)
+print("Mean Score:", np.mean(scores))
+print("Standard Deviation:", np.std(scores))
+
+from sklearn.svm import SVC
+from sklearn.model_selection import validation_curve, learning_curve
+import numpy as np
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+
+# Define the parameter grid
+param_grid = {
+    'C': [0.1, 1, 10],
+    'kernel': ['linear', 'rbf', 'poly'],
+    'gamma': ['scale', 'auto'],
+    'degree': [2, 3, 4]
+}
+
+# Generate validation curve
+train_scores, val_scores = validation_curve(
+    svc, X_train_sc, y_train, param_name='C', param_range=param_grid['C'], cv=5, scoring='roc_auc'
+)
+
+# Calculate mean and standard deviation of training and validation scores
+train_mean = np.mean(train_scores, axis=1)
+train_std = np.std(train_scores, axis=1)
+val_mean = np.mean(val_scores, axis=1)
+val_std = np.std(val_scores, axis=1)
+
+# Plot validation curve
+plt.figure(figsize=(10, 6))
+plt.plot(param_grid['C'], train_mean, label='Training Score', color='blue')
+plt.plot(param_grid['C'], val_mean, label='Validation Score', color='red')
+plt.fill_between(param_grid['C'], train_mean - train_std, train_mean + train_std, alpha=0.2, color='blue')
+plt.fill_between(param_grid['C'], val_mean - val_std, val_mean + val_std, alpha=0.2, color='red')
+plt.title('Validation Curve')
+plt.xlabel('C')
+plt.ylabel('Score')
+plt.legend(loc='best')
+plt.grid(True)
+plt.show()
+
+# Generate learning curve
+train_sizes, train_scores_lc, val_scores_lc = learning_curve(
+    svc, X_train_sc, y_train, cv=5, scoring='roc_auc', train_sizes=np.linspace(0.1, 1.0, 10)
+)
+
+# Calculate mean and standard deviation of training and validation scores
+train_mean_lc = np.mean(train_scores_lc, axis=1)
+train_std_lc = np.std(train_scores_lc, axis=1)
+val_mean_lc = np.mean(val_scores_lc, axis=1)
+val_std_lc = np.std(val_scores_lc, axis=1)
+
+# Plot learning curve
+plt.figure(figsize=(10, 6))
+plt.plot(train_sizes, train_mean_lc, label='Training Score', color='blue')
+plt.plot(train_sizes, val_mean_lc, label='Validation Score', color='red')
+plt.fill_between(train_sizes, train_mean_lc - train_std_lc, train_mean_lc + train_std_lc, alpha=0.2, color='blue')
+plt.fill_between(train_sizes, val_mean_lc - val_std_lc, val_mean_lc + val_std_lc, alpha=0.2, color='red')
+plt.title('Learning Curve')
+plt.xlabel('Training Examples')
+plt.ylabel('Score')
+plt.legend(loc='best')
+plt.grid(True)
+plt.show()
+
+from sklearn.metrics import roc_curve, precision_recall_curve, auc
+
+# Fit the model to the training data
+svc.fit(X_train_sc, y_train)
+
+# Get the scores for the positive class
+y_scores = svc.decision_function(X_test_sc)
+
+# Compute the false positive rate, true positive rate, and threshold for the ROC curve
+fpr, tpr, thresholds_roc = roc_curve(y_test, y_scores)
+
+# Compute the precision, recall, and threshold for the precision-recall curve
+precision, recall, thresholds_pr = precision_recall_curve(y_test, y_scores)
+
+# Compute the area under the ROC curve
+roc_auc = auc(fpr, tpr)
+
+# Plot the ROC curve
+plt.figure(figsize=(8, 6))
+plt.plot(fpr, tpr, label='ROC Curve (AUC = %0.2f)' % roc_auc)
+plt.plot([0, 1], [0, 1], 'r--', label='Random Classifier')
+plt.xlim([0, 1])
+plt.ylim([0, 1])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver Operating Characteristic (ROC) Curve')
+plt.legend()
+plt.show()
+
+# Plot the precision-recall curve
+plt.figure(figsize=(8, 6))
+plt.plot(recall, precision, label='Precision-Recall Curve')
+plt.xlim([0, 1])
+plt.ylim([0, 1])
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.title('Precision-Recall Curve')
+plt.legend()
+plt.show()
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+
+# Assuming you have your feature data stored in X_train_sc
+
+# Perform PCA for 2D projection
+pca = PCA(n_components=2)
+X_2d = pca.fit_transform(X_train_sc)
+
+# Plot the 2D projection
+plt.scatter(X_2d[:, 0], X_2d[:, 1], c=y_train)  # y_train represents the class labels
+plt.xlabel('Principal Component 1')
+plt.ylabel('Principal Component 2')
+plt.title('2D Projection of Data')
+plt.show()
