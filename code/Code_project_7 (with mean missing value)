@@ -230,6 +230,7 @@ print(class_proportions)
 
 kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 accuracy_scores = []
+best_params_list = []
 
 #Hyperparameter Tuning FIRST USE THESE AFTER DEFINE THE BEST PARAMETERS
 param_grid = {
