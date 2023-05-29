@@ -7,7 +7,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 # data split and standardizing(/scaling)
-from sklearn.model_selection import train_test_split, StratifiedKFold, KFold #je nachdem ob wir KFold brauchen, das weglassen
+from sklearn.model_selection import train_test_split, StratifiedKFold, KFold, GridSearchCV #je nachdem ob wir KFold brauchen, das weglassen
 from sklearn.preprocessing import StandardScaler
 # the 4 learning models
 from sklearn.linear_model import LogisticRegression
