@@ -240,11 +240,11 @@ param_grid = {
     'max_features': ['auto','sqrt', 'log2']
 }
 # Majority parameter values
-majority_params = {
-    'max_depth': 5,
-    'max_features': 'auto',
-    'min_samples_split': 2,
-    'n_estimators': 100
+param_grid = {
+    'max_depth': [5],
+    'max_features': ['auto'],
+    'min_samples_split': [2],
+    'n_estimators': [100]
 }
 
 # Prepare the performance overview data frame
@@ -278,27 +278,21 @@ for train_index, test_index in kfold.split(X, y):
     
     #Fit the model
     rf_classifier.fit(X_train_sc, y_train)
-    y_pred = rf_classifier.predict(X_test)
+   
     # Get the best parameters --> Needed for the best parameters
     best_params = rf_classifier.best_params_
     best_params_list.append(best_params)  # Store the best parameters
     # Use the best parameters to create the final model
     rf_model = RandomForestClassifier(random_state=1, **best_params)
+    
+    #Make prediction using the final model
     y_pred = rf_model.predict(X_test)
+    
+    #Calculate accuracy and store it 
     accuracy = accuracy_score(y_test, y_pred)
     accuracy_scores.append(accuracy)
     
-    # ––––––––––––––––––––––––––––––  Random Forest  ––––––––––––––––––––––––––––––
-    rf_model = RandomForestClassifier(random_state=1, **majority_params)
-    rf_model.fit(X_train_sc, y_train)
-    
-    
-    #y_pred = rf_classifier.predict(X_test)
-    #y_pred = rf_model.predict(X_test)
-    y_pred = rf_model.predict(X_test_sc)
-    
-    accuracy = accuracy_score(y_test, y_pred)
-    accuracy_scores.append(accuracy)
+   
     # ––––––––––––––––––––––––––––––  Logistic Regression  ––––––––––––––––––––––––––––––
     log_reg_classifier = LogisticRegression()
     log_reg_classifier.fit(X_train_sc, y_train)
