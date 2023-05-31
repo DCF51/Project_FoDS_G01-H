@@ -226,6 +226,25 @@ print(class_proportions)
 
 #So we can see there are 4861 of non-stroke and 249 with stroke. So the majority has no stroke. In the class proportions we can see the porportion of 'Flase' is 0.9513 --> 95.13% of the data. The porportion of 'True' is 0.0487 --> 4.87% of the data
 ==>highly imbalanced: So stratified K-Fold Cross-Valdidator would be the better option
+
+# ========================= Hyperparameter Tuning ===========================
+kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+param_grid = {
+    'n_estimators': [100, 200, 300],
+    'max_depth': [None, 5, 10],
+    'min_samples_split': [2, 5, 10],
+    'max_features': ['auto', 'sqrt', 'log2']
+}
+
+rf_classifier = RandomForestClassifier(random_state=1)
+grid_search = GridSearchCV(rf_classifier, param_grid, cv=kfold)
+grid_search.fit(X, y)
+
+# Print the best parameters for each parameter in the param_grid
+for param_name in param_grid:
+    print(f"Best {param_name}: {grid_search.best_params_[param_name]}")
+    
 # ––––––––––––––––––––––––––––––  SStratified K-fold cross validator  ––––––––––––––––––––––––––––––
 
 kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
@@ -363,7 +382,7 @@ print(df_performance.groupby(by = 'clf').agg(['mean', 'std']))
 display(all_importance)
 
 # Visualize the normalized feature importance across the five folds and add error bar to indicate the std
-fig, ax = plt.subplots(figsize=(18, 6))
+fig, ax = plt.subplots(figsize=(12, 6))
 
 ax.bar(np.arange(importance_scores.shape[1]), all_importance.mean(), yerr=all_importance.std())
 ax.set_xticks(np.arange(importance_scores.shape[1]), X.columns.tolist(), rotation=45)
@@ -374,17 +393,21 @@ plt.show()
 
 # ================================ Feature importance for Random Forest =================
 feature_importance = rf_model.feature_importances_
+std_importance = np.std([tree.feature_importances_ for tree in rf_model.estimators_], axis=0)
 
-# Plot feature importance
-plt.figure(figsize=(8, 6))
-plt.barh(X_train.columns, feature_importance)
-plt.xlabel('Feature Importance')
-plt.ylabel('Features')
+plt.figure(figsize=(12, 6))
+plt.bar(X_train.columns, feature_importance)
+plt.errorbar(X_train.columns, feature_importance, yerr=std_importance, fmt='none', color='black', capsize=3)
+plt.xlabel('Features')
+plt.ylabel('Feature Importance')
 plt.title('Random Forest Feature Importance')
+plt.xticks(rotation=45, ha='center')
+plt.ylim(bottom=0)  # Set the bottom limit of the y-axis to 0
 plt.show()
 
-# Store feature importance in the performance overview data frame
+# Store feature importance and standard deviation in the performance overview data frame
 df_performance['feature_importance'] = feature_importance
+df_performance['std_importance'] = std_importance
 
 
 # ==============================  Models  ==============================
