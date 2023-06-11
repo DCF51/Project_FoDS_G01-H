@@ -1,5 +1,3 @@
-# ______________________________  Code for the Project of Group G01-H ______________________________
-
 # ==============================  Imports/Packages  ==============================
 # standard packages
 import numpy as np
@@ -7,45 +5,47 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 # data split and standardizing(/scaling)
-from sklearn.model_selection import train_test_split, StratifiedKFold, KFold #je nachdem ob wir KFold brauchen, das weglassen
+from sklearn.model_selection import train_test_split, StratifiedKFold, \
+    KFold  # je nachdem ob wir KFold brauchen, das weglassen
 from sklearn.preprocessing import StandardScaler
-# the 4 learning models
+from sklearn.model_selection import train_test_split
+#the 4 learning models
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
-    # for decision trees see: https://scikit-learn.org/stable/modules/tree.html
+# for decision trees see: https://scikit-learn.org/stable/modules/tree.html
 from sklearn.svm import SVC, NuSVC, LinearSVC
-    # for svm we have different methods see: https://scikit-learn.org/stable/modules/svm.html
+# for svm we have different methods see: https://scikit-learn.org/stable/modules/svm.html
 # metrics
 from sklearn.metrics import r2_score, mean_squared_error, roc_curve, confusion_matrix, auc
-from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_score, recall_score, f1_score
-#Label encoder
+# Label encoder
 from sklearn.preprocessing import LabelEncoder
 # other
-from collections import Counter
-
-
 import warnings
 
 warnings.filterwarnings('ignore')
+
 
 # ==============================  Functions  ==============================
 
 # Utility function to plot the diagonal line
 def add_identity(axes, *line_args, **line_kwargs):
     identity, = axes.plot([], [], *line_args, **line_kwargs)
+
     def callback(axes):
         low_x, high_x = axes.get_xlim()
         low_y, high_y = axes.get_ylim()
         low = max(low_x, low_y)
         high = min(high_x, high_y)
         identity.set_data([low, high], [low, high])
+
     callback(axes)
     axes.callbacks.connect('xlim_changed', callback)
     axes.callbacks.connect('ylim_changed', callback)
     return axes
 
-def evaluation_metrics(clf, y, X, ax,legend_entry='my legendEntry'):
+
+def evaluation_metrics(clf, y, X, ax, legend_entry='my legendEntry'):
     """
     compute multiple evaluation metrics for the provided classifier given the true labels
     and input features. Provides a plot of the roc curve on the given axis with the legend
@@ -75,92 +75,92 @@ def evaluation_metrics(clf, y, X, ax,legend_entry='my legendEntry'):
     """
 
     # Get the label predictions
-    y_test_pred    = clf.predict(X)
+    y_test_pred = clf.predict(X)
 
     # Calculate the confusion matrix given the predicted and true labels
     tn, fp, fn, tp = confusion_matrix(y, y_test_pred).ravel()
-    
+
     print(':) Successfully implemented the confusion matrix!')
 
     print('Confusion matrix:\n\t  |y_true = 0\t|y_true = 1')
     print('----------|-------------|------------')
-    print('y_pred = 0|  ' + str(tp) + '\t\t|' + str(fp))
-    print('y_pred = 1|  ' + str(fn) + '\t\t|' + str(tn))
+    print('y_pred = 0|  ' + str(tn) + '\t\t|' + str(fn))
+    print('y_pred = 1|  ' + str(fp) + '\t\t|' + str(tp))
 
-
-     # Check for denominator of zero
+    # Check for denominator of zero
     def safe_divide(numerator, denominator):
         return numerator / denominator if denominator != 0 else 0
 
     # Calculate the evaluation metrics
     precision = safe_divide(tp, (tp + fp))
     recall = safe_divide(tp, (tp + fn))
-    f1_score = safe_divide((tp), (tp + (0.5*(fn + fp))))
+    f1_score = safe_divide((tp), (tp + (0.5 * (fn + fp))))
     specificity = safe_divide(tn, (tn + fp))
-    accuracy = safe_divide((tp+tn), (tp + tn + fp + fn))
+    accuracy = safe_divide((tp + tn), (tp + tn + fp + fn))
 
     # Get the roc curve using a sklearn function
-    y_test_predict_proba  = clf.predict_proba(X)
-    fp_rates, tp_rates, _ = roc_curve(y, y_test_predict_proba[:,1]) # i want the predictioin probability for the class "1"
+    y_test_predict_proba = clf.predict_proba(X)
+    fp_rates, tp_rates, _ = roc_curve(y, y_test_predict_proba[:,
+                                         1])  # i want the predictioin probability for the class "1"
 
     # Calculate the area under the roc curve using a sklearn function
     roc_auc = auc(fp_rates, tp_rates)
 
     # Plot on the provided axis - feel free to make this plot nicer if
     # you want to.
-    ax.plot(fp_rates, tp_rates, label = 'Fold {}'.format(legend_entry))
+    ax.plot(fp_rates, tp_rates, label='Fold {}'.format(legend_entry))
 
     return [accuracy, precision, recall, specificity, f1_score, roc_auc]
 
+
 # ==============================  Import data  ==============================
 data = pd.read_csv(
-    filepath_or_buffer='../data/healthcare-dataset-stroke-data.csv',
+    filepath_or_buffer='~/Desktop/data/healthcare-dataset-stroke-data.csv',
     index_col='id',
-    dtype= {'gender':object, 'age':float, 'hypertension':bool, 'heart_disease':bool,
-            'ever_married':object, 'work_type':object, 'Residence_type':object, 
-            'avg_glucose_level':float, 'bmi':float, 'smoking_status':object, 'stroke':bool}
-            )
+    dtype={'gender': object, 'age': float, 'hypertension': bool, 'heart_disease': bool,
+           'ever_married': object, 'work_type': object, 'Residence_type': object,
+           'avg_glucose_level': float, 'bmi': float, 'smoking_status': object, 'stroke': bool}
+)
 
 # ==============================  Define datatypes  ==============================
-#as categorical if needed
+# as categorical if needed
 data['gender'] = pd.Categorical(data['gender'])
 data['work_type'] = pd.Categorical(data['work_type'])
 data['Residence_type'] = pd.Categorical(data['Residence_type'])
 data['smoking_status'] = pd.Categorical(data['smoking_status'])
 
-#change 'ever_married' to boolean
+# change 'ever_married' to boolean
 data['ever_married'] = data['ever_married'].map({'Yes': True, 'No': False})
-data['ever_married']=data['ever_married'].astype(bool)
+data['ever_married'] = data['ever_married'].astype(bool)
 
 # ==============================  Data description  ==============================
 # Shape and meaning of dataframe -- df.info(), df.shape[], df.columns, df.head()
 data.info()
-print('There are ', data.shape[1],'columns in the data.')
-print('There are ', data.shape[0],'rows in the data.')
+print('There are ', data.shape[1], 'columns in the data.')
+print('There are ', data.shape[0], 'rows in the data.')
 
-#data.columns not necessary because already included in data.info()
+# data.columns not necessary because already included in data.info()
 
 # Datatypes -- df.info() and df.dtypes
-#data.dtypes not necessary because already included in data.info()
+# data.dtypes not necessary because already included in data.info()
 
 # Missing Data -- df.isna().sum()
 print('missing values:')
-print(data.isna().sum()) ###bmi has 201 missing values
+print(data.isna().sum())  ###bmi has 201 missing values
 # Calculate the mean or median of the "bmi" feature
 bmi_mean = data['bmi'].mean()
 bmi_median = data['bmi'].median()
 print(bmi_mean)
 print(bmi_median)
 # Replace the missing values with the mean or median
-data['bmi'].fillna(bmi_mean, inplace=True) 
+data['bmi'].fillna(bmi_mean, inplace=True)
 print(data.isna().sum())
 
 # Brief summary of extremes/means/medians -- df.describe()
 print(data.describe())
 
 # Check for duplicate rows -- df.duplicated()
-print('sum of duplicated lines is:', data.duplicated().sum()) #marks all duplicates except the first occurence
-
+print('sum of duplicated lines is:', data.duplicated().sum())  # marks all duplicates except the first occurence
 # ==============================  Data manipulation  ==============================
 # Identify the categorical (cat_cols), numerical features (num_cols) and boolean features (boolean_cols)
 num_cols = ['age', 'avg_glucose_level', 'bmi']
@@ -174,299 +174,85 @@ data[boolean_cols] = data[boolean_cols].astype(int)
 label_encoder = LabelEncoder()
 for col in cate_cols:
     data[col] = label_encoder.fit_transform(data[col])
-
-#I dont know if the mapping is important but it could be because some machine learning algorithms can interprete data better with mapping but i am not to familiar with this point. 
-for col in boolean_cols:
-    unique_values = data[col].unique()
-    mapping = {value: index for index, value in enumerate(unique_values)}
-    data[col] = data[col].map(mapping)
     
 # This helps that no more columns are created than before
 columns_to_keep = num_cols + cate_cols + boolean_cols
 data_e = data[columns_to_keep]
 
-
 # ==============================  Data Visualization  ==============================
 
-age_distribution = sns.histplot(x = data['age'], color = 'blue', bins=1, binwidth=1)
-age_distribution.set(xlabel = 'Age', ylabel = 'Number of Patients', title = 'Age Distribution')
+age_distribution = sns.histplot(x=data['age'], color='blue', bins=1, binwidth=1)
+age_distribution.set(xlabel='Age', ylabel='Number of Patients', title='Age Distribution')
 plt.grid(True)
 age_distribution.set_axisbelow(True)
 age_distribution.set_zorder(-1)
 
-bmi_distribution = sns.histplot(x = data['bmi'], color = 'blue', bins=1, binwidth=1)
-bmi_distribution.set(xlabel = 'BMI', ylabel = 'Number of Patients', title = 'BMI Distribution')
+bmi_distribution = sns.histplot(x=data['bmi'], color='blue', bins=1, binwidth=1)
+bmi_distribution.set(xlabel='BMI', ylabel='Number of Patients', title='BMI Distribution')
 plt.grid(True)
 bmi_distribution.set_axisbelow(True)
 bmi_distribution.set_zorder(-1)
 
-glucose_level_distribution = sns.histplot(x = data['avg_glucose_level'], color = 'blue', bins=1, binwidth=1)
-glucose_level_distribution.set(xlabel = 'Average Glucose Level', ylabel = 'Number of Patients', title = 'Glucose Level Distribution')
+glucose_level_distribution = sns.histplot(x=data['avg_glucose_level'], color='blue', bins=1, binwidth=1)
+glucose_level_distribution.set(xlabel='Average Glucose Level', ylabel='Number of Patients',
+                               title='Glucose Level Distribution')
 plt.grid(True)
 glucose_level_distribution.set_axisbelow(True)
 glucose_level_distribution.set_zorder(-1)
 
 # ==============================  Feature selection  ==============================
-# don't know what exactly to use here yet
+# don't know what exactly to use here yettarget_variable_name', axis=1)  # Replace 'target_variable_name' with the actual name of your target variable
+
 
 # ==============================  Data split  ==============================
 
 X = data.copy().drop(columns='stroke')
 y = data['stroke']
 
-# ======================Normal Spkir or K-Fold?========================
-class_counts = data['stroke'].value_counts()
-class_proportions = data['stroke'].value_counts(normalize=True)
-
-print("Class Counts:")
-print(class_counts)
-
-print("\nClass Proportions:")
-print(class_proportions)
-
-#So we can see there are 4861 of non-stroke and 249 with stroke. So the majority has no stroke. In the class proportions we can see the porportion of 'Flase' is 0.9513 --> 95.13% of the data. The porportion of 'True' is 0.0487 --> 4.87% of the data
-==>highly imbalanced: So stratified K-Fold Cross-Valdidator would be the better option
 # ––––––––––––––––––––––––––––––  SStratified K-fold cross validator  ––––––––––––––––––––––––––––––
-
-kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+n_splits = 5
+kfold = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
 accuracy_scores = []
 
-#Hyperparameter Tuning FIRST USE THESE AFTER DEFINE THE BEST PARAMETERS
-param_grid = {
-    'n_estimators': [100, 200, 300],
-    'max_depth': [None, 5, 10],
-    'min_samples_split': [2, 5, 10],
-    'max_features': ['auto','sqrt', 'log2']
-}
-# Majority parameter values
-majority_params = {
-    'max_depth': 5,
-    'max_features': 'auto',
-    'min_samples_split': 2,
-    'n_estimators': 100
-}
+# ----------------------------  Standardizing/Scaling  ---------------------------------
+sc = StandardScaler()
+# create copies like in the tutorial to avoid inplace operations
 
-# Prepare the performance overview data frame
-df_performance = pd.DataFrame(columns = ['fold','clf','accuracy','precision','recall',
-                                         'specificity','F1','roc_auc'])
+#Barplot Stroke/NoStroke
+import pandas as pd
+import matplotlib.pyplot as plt
 
-all_importance = pd.DataFrame(index=range(0, 5), columns=X.columns)
+# Assuming your dataset is stored in a DataFrame called 'df'
+stroke_counts = data['stroke'].value_counts()
 
-# Use this counter to save your performance metrics for each crossvalidation fold
-# also plot the roc curve for each model and fold into a joint subplot
-fold = 0
-fig,axs = plt.subplots(1,2,figsize=(9, 4))
+# Define colors for the bars
+colors = ['steelblue', 'lightgray']
 
-# ==============================  Models  ==============================
-# Be careful that we have different names for our different dataframes (e.g. X_train_LR and X_train_RF)
+# Create a bar plot
+plt.bar(stroke_counts.index, stroke_counts.values, color=colors)
 
-for train_index, test_index in kfold.split(X, y):
-    X_train, X_test = X.iloc[train_index], X.iloc[test_index]
-    y_train, y_test = y.iloc[train_index], y.iloc[test_index]
-    
-    # ----------------------------  Standardizing/Scaling  ---------------------------------
-    sc = StandardScaler()
-    #create copies like in the tutorial to avoid inplace operations
-    X_train_sc, X_test_sc = X_train.copy(), X_test.copy()
+# Add labels and title
+plt.xlabel('Stroke')
+plt.ylabel('Count')
+plt.title('Number of People with and without Stroke')
 
-    X_train_sc[num_cols] = sc.fit_transform(X_train[num_cols])
-    X_test_sc[num_cols] = sc.transform(X_test[num_cols])
-    
-    # ––––––––––––––––––––––––––––––  Random Forest  FIRST FOR PREDICTING BEST PARAMETERS ––––––––––––––––––––––––––––––
-    rf_classifier = GridSearchCV(RandomForestClassifier(random_state=1),param_grid,cv=kfold)
-    
-    #Fit the model
-    rf_classifier.fit(X_train_sc, y_train)
-    y_pred = rf_classifier.predict(X_test)
-    # Get the best parameters --> Needed for the best parameters
-    best_params = rf_classifier.best_params_
-    best_params_list.append(best_params)  # Store the best parameters
-    # Use the best parameters to create the final model
-    rf_model = RandomForestClassifier(random_state=1, **best_params)
-    y_pred = rf_model.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
-    accuracy_scores.append(accuracy)
-    
-    # ––––––––––––––––––––––––––––––  Random Forest  ––––––––––––––––––––––––––––––
-    rf_model = RandomForestClassifier(random_state=1, **majority_params)
-    rf_model.fit(X_train_sc, y_train)
-    
-    
-    #y_pred = rf_classifier.predict(X_test)
-    #y_pred = rf_model.predict(X_test)
-    y_pred = rf_model.predict(X_test_sc)
-    
-    accuracy = accuracy_score(y_test, y_pred)
-    accuracy_scores.append(accuracy)
-    # ––––––––––––––––––––––––––––––  Logistic Regression  ––––––––––––––––––––––––––––––
-    log_reg_classifier = LogisticRegression()
-    log_reg_classifier.fit(X_train_sc, y_train)
-    
-    # Make predictions
-    y_pred_log_reg = log_reg_classifier.predict(X_test)
-    
-    # Calculate feature importance
-    coefficients = log_reg_classifier.coef_
-    importance = np.abs(coefficients)
-    importance_scores = (importance / np.sum(importance))
-    all_importance.loc[fold] = importance_scores
-    
-    # ––––––––––––––––––––––––––––––  Decision Tree  ––––––––––––––––––––––––––––––
-    DT = DecisionTreeClassifier()
+# Add value labels on top of each bar
+for i, count in enumerate(stroke_counts.values):
+    plt.text(i, count, str(count), ha='center', va='bottom')
 
-    # ––––––––––––––––––––––––––––––  Support Vector Machine  ––––––––––––––––––––––––––––––
-    SVM = SVC() #or NuSVC()/ LinearSVC(), for Moreno to decide which one fits best
-    
-    # ––––––––––––––––––––––––––––––  Evaluate your classifiers  ––––––––––––––––––––––––––––––
-    eval_metrics = evaluation_metrics(log_reg_classifier, y_test, X_test_sc, axs[0],legend_entry=str(fold))
-    df_performance.loc[len(df_performance),:] = [fold,'Logistic Regression'] + eval_metrics
+# Modify the legend labels and colors
+legend_labels = ['No Stroke', 'Stroke']
+legend_colors = [colors[0], colors[1]]
 
-    eval_metrics_RF = evaluation_metrics(rf_classifier, y_test, X_test_sc, axs[1],legend_entry=str(fold))
-    df_performance.loc[len(df_performance), :] = [fold, 'Random Forest'] + eval_metrics_RF
-    
-    # increase counter for folds
-    fold += 1
-    
-# Edit the plot and make it nice
-model_names = ['Logistic Regression','Random Forest']
-for i,ax in enumerate(axs):
-    ax.set_xlabel("FPR")
-    ax.set_ylabel("TPR")
-    add_identity(ax, color="r", ls="--",label = 'random\nclassifier')
-    ax.set_title(f"ROC curve {model_names[i]}")
-    ax.grid(True, linestyle = "--", linewidth = 0.5, alpha = 0.7)
-    ax.legend(loc="lower right")
-
-mean_accuracy = np.mean(accuracy_scores)
-   
-#===========================Best Parameter for Hyperparameter tuning ==============
-#This is only needed in the beginning--> WITH THIS WE CAN TAKE THE BEST PARAMETERS FOR THE CODE ABOVE.
-best_params_list
-
-# Create a dictionary to store the majority values for each parameter
-majority_values = {}
-
-# Iterate over the parameters in the first parameter dictionary
-for param in best_params_list[0]:
-    # Create a list to store the parameter values
-    param_values = [params[param] for params in best_params_list]
-    # Count the occurrences of each value
-    param_counter = Counter(param_values)
-    # Find the majority value(s)
-    majority_value = [value for value, count in param_counter.items() if count == max(param_counter.values())]
-    # Store the majority value(s) in the dictionary
-    majority_values[param] = majority_value
-
-# Print the majority values
-print("Majority Values:")
-for param, value in majority_values.items():
-    print(f"{param}: {value}")
-#As we can see here these are the parameters which appear as the best in the majority of the folds --> So we can take these values for the k-fold crossvalidation
-# ===========================  Summarize the folds  ================================
-print(df_performance.groupby(by = 'clf').agg(['mean', 'std']))
-
-display(all_importance)
-
-# Visualize the normalized feature importance across the five folds and add error bar to indicate the std
-fig, ax = plt.subplots(figsize=(18, 6))
-
-ax.bar(np.arange(importance_scores.shape[1]), all_importance.mean(), yerr=all_importance.std())
-ax.set_xticks(np.arange(importance_scores.shape[1]), X.columns.tolist(), rotation=45)
-ax.set_title("Normalized feature importance for LR across 5 folds", fontsize=20)
-plt.xlabel('Risk Factors', fontsize=16)
-plt.ylabel("Normalized feature importance", fontsize=16)
+# Add a legend with modified labels, colors, and increased font size
+plt.legend(handles=[plt.Rectangle((0, 0), 1, 1, color=color) for color in legend_colors],
+           labels=legend_labels,
+           fontsize='medium', frameon = False)
+plt.xticks([])
+# Display the plot
 plt.show()
 
-# ================================ Feature importance for Random Forest =================
-feature_importance = rf_model.feature_importances_
-
-# Plot feature importance
-plt.figure(figsize=(8, 6))
-plt.barh(X_train.columns, feature_importance)
-plt.xlabel('Feature Importance')
-plt.ylabel('Features')
-plt.title('Random Forest Feature Importance')
-plt.show()
-
-# Store feature importance in the performance overview data frame
-df_performance['feature_importance'] = feature_importance
-
-
-# ==============================  Models  ==============================
-# Be careful that we have different names for our different dataframes (e.g. X_train_LR and X_train_RF)
-
-# ––––––––––––––––––––––––––––––  Decision Tree  ––––––––––––––––––––––––––––––
-DT = DecisionTreeClassifier()
-
-# ––––––––––––––––––––––––––––––  Support Vector Machine  ––––––––––––––––––––––––––––––
-SVM = SVC() #or NuSVC()/ LinearSVC(), for Moreno to decide which one fits best
- # Import necessary libraries
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from sklearn.metrics import confusion_matrix
-    from sklearn.decomposition import PCA
-    from sklearn.metrics import ConfusionMatrixDisplay
-    from sklearn.svm import SVC
-
-    # This creates an SVM classifier
-    clf_svm = SVC()  #
-    clf_svm.fit(X_train_sc,
-                y_train)  # After this step there's a trained SVM model that can be used for making predictions on new data
-
-    from sklearn.svm import SVC
-    from sklearn.model_selection import GridSearchCV
-
-    # Define the parameter grid
-    param_grid = {
-        'C': [0.1, 1, 10],
-        'kernel': ['linear', 'rbf', 'poly'],
-        'gamma': ['scale', 'auto'],
-        'degree': [2, 3, 4]
-    }
-
-    # Define the scoring types
-    scoring_types = ['accuracy', 'precision', 'recall', 'f1']
-
-    # Create the SVC model
-    svc = SVC()
-
-    for scoring_type in scoring_types:
-        # Create the GridSearchCV object with the specific scoring type
-        grid_search = GridSearchCV(estimator=svc, param_grid=param_grid, cv=5, scoring=scoring_type, refit=False)
-
-        # Fit the GridSearchCV object to the data
-        grid_search.fit(X_train_sc, y_train)
-
-        # Get the best parameters and best score
-        best_params = grid_search.best_params_
-        best_score = grid_search.best_score_
-
-        # Print the scoring type, best parameters, and best score
-        print("Scoring Type:", scoring_type)
-        print("Best Parameters:", best_params)
-        print("Best Score:", best_score)
-        print("---------------------")
-
-from sklearn.svm import SVC
-# Create the SVC model
-svc = SVC(C=0.1, degree=2, gamma='scale', kernel='linear')
-
-# Fit the model to the training data
-svc.fit(X_train_sc, y_train)
-
-# Predict the labels for the test set
-y_pred = svc.predict(X_test_sc)
-
-# Calculate the confusion matrix
-cm = confusion_matrix(y_test, y_pred)
-
-# Create a ConfusionMatrixDisplay object and plot the confusion matrix
-disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-disp.plot()
-
-# Show the plot
-plt.show()
-
+# –––––––––––––––––––––––––––––– Support Vector Machine ––––––––––––––––––––––––––––––
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
@@ -475,9 +261,8 @@ from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.svm import NuSVC
 from sklearn.model_selection import GridSearchCV
 
-# This creates an SVM classifier
-clf_svm = NuSVC(nu=0.07)
-clf_svm.fit(X_train_sc, y_train)
+# Counter to keep track of fold number
+fold = 0
 
 # Define the parameter grid
 param_grid = {
@@ -488,41 +273,61 @@ param_grid = {
 }
 
 # Create the NuSVC model
-nusvc = NuSVC()
+nusvc = NuSVC(random_state=42)
 
-from sklearn.svm import NuSVC
+# Split the data into train and test sets
+X_train_NuSVC = X.iloc[train_i]
+y_train_NuSVC = y.iloc[train_i]
+X_test_NuSVC = X.iloc[test_i]
+y_test_NuSVC = y.iloc[test_i]
 
-# Create the NuSVC model
-nusvc = NuSVC()
+# Scale the training and test data
+X_train_NuSVC_sc = sc.fit_transform(X_train_NuSVC)
+X_test_NuSVC_sc = sc.transform(X_test_NuSVC)
 
+# This creates an SVM classifier
+clf_svm = NuSVC(nu=0.07)
+clf_svm.fit(X_train_NuSVC_sc, y_train_NuSVC)
+
+# Prepare the performance overview data frame
+df_performance_NuSVC = pd.DataFrame(columns=['fold', 'accuracy', 'precision', 'recall', 'specificity', 'F1', 'roc_auc'])
+
+scoring_types = ['accuracy', 'precision', 'recall', 'f1']
+ 
 for scoring_type in scoring_types:
     # Create the GridSearchCV object with the specific scoring type
     grid_search = GridSearchCV(estimator=nusvc, param_grid=param_grid, cv=5, scoring=scoring_type, refit=False)
-
+    
     # Fit the GridSearchCV object to the data
-    grid_search.fit(X_train_sc, y_train)
-
+    grid_search.fit(X_train_NuSVC_sc, y_train_NuSVC)
+    
     # Get the best parameters and best score
     best_params = grid_search.best_params_
     best_score = grid_search.best_score_
-
+    
     # Print the scoring type, best parameters, and best score
     print("Scoring Type:", scoring_type)
     print("Best Parameters:", best_params)
     print("Best Score:", best_score)
-    print("---------------------")
-
+    print("---------------------")    
+    
 # Create the NuSVC model with the best parameters
-nusvc = NuSVC(nu=0.07, degree=2, gamma='auto', kernel='rbf')
+nusvc = NuSVC(nu=0.07, degree=4, gamma='scale', kernel='poly')
 
 # Fit the model to the training data
-nusvc.fit(X_train_sc, y_train)
+nusvc.fit
+    
+# Create the NuSVC model with the best parameters
+#nusvc = NuSVC(nu=0.06, degree=2, gamma='auto', kernel='rbf')
+
+# Fit the model to the training data
+nusvc.fit(X_train_NuSVC_sc, y_train_NuSVC)
 
 # Predict the labels for the test set
-y_pred = nusvc.predict(X_test_sc)
+y_pred_NuSVC = nusvc.predict(X_test_NuSVC_sc)
 
 # Calculate the confusion matrix
-cm = confusion_matrix(y_test, y_pred)
+cm = confusion_matrix(y_test_NuSVC, y_pred_NuSVC)
 
 # Create a ConfusionMatrixDisplay object and plot the confusion matrix
 disp = ConfusionMatrixDisplay(confusion_matrix=cm)
@@ -531,94 +336,20 @@ disp.plot()
 # Show the plot
 plt.show()
 
-from sklearn.model_selection import cross_val_score
-
-# Create the SVC model
-svc = SVC(C=0.1, degree=2, gamma='scale', kernel='linear')
-
-# Perform cross-validation
-scores = cross_val_score(svc, X_train_sc, y_train, cv=5, scoring='accuracy')
-
-# Print the cross-validation scores
-print("Cross-Validation Scores:", scores)
-print("Mean Score:", np.mean(scores))
-print("Standard Deviation:", np.std(scores))
-
-from sklearn.svm import SVC
-from sklearn.model_selection import validation_curve, learning_curve
-import numpy as np
-from sklearn.decomposition import PCA
-import matplotlib.pyplot as plt
-
-# Define the parameter grid
-param_grid = {
-    'C': [0.1, 1, 10],
-    'kernel': ['linear', 'rbf', 'poly'],
-    'gamma': ['scale', 'auto'],
-    'degree': [2, 3, 4]
-}
-
-# Generate validation curve
-train_scores, val_scores = validation_curve(
-    svc, X_train_sc, y_train, param_name='C', param_range=param_grid['C'], cv=5, scoring='roc_auc'
-)
-
-# Calculate mean and standard deviation of training and validation scores
-train_mean = np.mean(train_scores, axis=1)
-train_std = np.std(train_scores, axis=1)
-val_mean = np.mean(val_scores, axis=1)
-val_std = np.std(val_scores, axis=1)
-
-# Plot validation curve
-plt.figure(figsize=(10, 6))
-plt.plot(param_grid['C'], train_mean, label='Training Score', color='blue')
-plt.plot(param_grid['C'], val_mean, label='Validation Score', color='red')
-plt.fill_between(param_grid['C'], train_mean - train_std, train_mean + train_std, alpha=0.2, color='blue')
-plt.fill_between(param_grid['C'], val_mean - val_std, val_mean + val_std, alpha=0.2, color='red')
-plt.title('Validation Curve')
-plt.xlabel('C')
-plt.ylabel('Score')
-plt.legend(loc='best')
-plt.grid(True)
-plt.show()
-
-# Generate learning curve
-train_sizes, train_scores_lc, val_scores_lc = learning_curve(
-    svc, X_train_sc, y_train, cv=5, scoring='roc_auc', train_sizes=np.linspace(0.1, 1.0, 10)
-)
-
-# Calculate mean and standard deviation of training and validation scores
-train_mean_lc = np.mean(train_scores_lc, axis=1)
-train_std_lc = np.std(train_scores_lc, axis=1)
-val_mean_lc = np.mean(val_scores_lc, axis=1)
-val_std_lc = np.std(val_scores_lc, axis=1)
-
-# Plot learning curve
-plt.figure(figsize=(10, 6))
-plt.plot(train_sizes, train_mean_lc, label='Training Score', color='blue')
-plt.plot(train_sizes, val_mean_lc, label='Validation Score', color='red')
-plt.fill_between(train_sizes, train_mean_lc - train_std_lc, train_mean_lc + train_std_lc, alpha=0.2, color='blue')
-plt.fill_between(train_sizes, val_mean_lc - val_std_lc, val_mean_lc + val_std_lc, alpha=0.2, color='red')
-plt.title('Learning Curve')
-plt.xlabel('Training Examples')
-plt.ylabel('Score')
-plt.legend(loc='best')
-plt.grid(True)
-plt.show()
-
+#--------------ROC Curve--------------
 from sklearn.metrics import roc_curve, precision_recall_curve, auc
 
 # Fit the model to the training data
-svc.fit(X_train_sc, y_train)
+nusvc.fit(X_train_NuSVC_sc, y_train_NuSVC)
 
 # Get the scores for the positive class
-y_scores = svc.decision_function(X_test_sc)
+y_scores_NuSVC = nusvc.decision_function(X_test_NuSVC_sc)
 
 # Compute the false positive rate, true positive rate, and threshold for the ROC curve
-fpr, tpr, thresholds_roc = roc_curve(y_test, y_scores)
+fpr, tpr, thresholds_roc = roc_curve(y_test_NuSVC, y_scores_NuSVC)
 
 # Compute the precision, recall, and threshold for the precision-recall curve
-precision, recall, thresholds_pr = precision_recall_curve(y_test, y_scores)
+precision, recall, thresholds_pr = precision_recall_curve(y_test_NuSVC, y_scores_NuSVC)
 
 # Compute the area under the ROC curve
 roc_auc = auc(fpr, tpr)
@@ -635,30 +366,43 @@ plt.title('Receiver Operating Characteristic (ROC) Curve')
 plt.legend()
 plt.show()
 
-# Plot the precision-recall curve
-plt.figure(figsize=(8, 6))
-plt.plot(recall, precision, label='Precision-Recall Curve')
-plt.xlim([0, 1])
-plt.ylim([0, 1])
-plt.xlabel('Recall')
-plt.ylabel('Precision')
-plt.title('Precision-Recall Curve')
-plt.legend()
-plt.show()
 
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
+#-----------
+import pandas as pd
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 
-# Assuming you have your feature data stored in X_train_sc
+# List to store performance metrics for each fold
+results = []
 
-# Perform PCA for 2D projection
-pca = PCA(n_components=2)
-X_2d = pca.fit_transform(X_train_sc)
+# Perform grid search and cross-validation
+for fold, (train_index, test_index) in enumerate(kfold.split(X, y)):
+    X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+    y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+    
+    # Standardize the data
+    X_train_sc = sc.fit_transform(X_train)
+    X_test_sc = sc.transform(X_test)
 
-# Plot the 2D projection
-plt.scatter(X_2d[:, 0], X_2d[:, 1], c=y_train)  # y_train represents the class labels
-plt.xlabel('Principal Component 1')
-plt.ylabel('Principal Component 2')
-plt.title('2D Projection of Data')
-plt.show()
+    # Create the NuSVC model with the best parameters
+    nusvc = NuSVC(nu=0.07, degree=2, gamma='auto', kernel='rbf')
+
+    # Fit the model to the training data
+    nusvc.fit(X_train_sc, y_train)
+
+    # Predict the labels for the test set
+    y_pred = nusvc.predict(X_test_sc)
+
+    # Calculate performance metrics
+    accuracy = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
+    roc_auc = roc_auc_score(y_test, y_pred)
+
+    # Append the results to the list
+    results.append([fold, accuracy, precision, recall, f1, roc_auc])
+
+# Create a DataFrame from the results list
+df_performance = pd.DataFrame(results, columns=['fold', 'accuracy', 'precision', 'recall', 'F1', 'roc_auc'])
+
+print(df_performance)
