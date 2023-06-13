@@ -252,157 +252,149 @@ plt.xticks([])
 # Display the plot
 plt.show()
 
-# –––––––––––––––––––––––––––––– Support Vector Machine ––––––––––––––––––––––––––––––
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix
-from sklearn.decomposition import PCA
-from sklearn.metrics import ConfusionMatrixDisplay
-from sklearn.svm import NuSVC
-from sklearn.model_selection import GridSearchCV
-
 # Counter to keep track of fold number
-fold = 0
-
-# Define the parameter grid
-param_grid = {
-    'nu': [0.05, 0.06, 0.07],
-    'kernel': ['linear', 'rbf', 'poly'],
-    'gamma': ['scale', 'auto'],
-    'degree': [2, 3, 4]
-}
 
 # Create the NuSVC model
 nusvc = NuSVC(random_state=42)
 
-# Split the data into train and test sets
-X_train_NuSVC = X.iloc[train_i]
-y_train_NuSVC = y.iloc[train_i]
-X_test_NuSVC = X.iloc[test_i]
-y_test_NuSVC = y.iloc[test_i]
+for fold, (train_i, test_i) in enumerate(kfold.split(X, y)):
+    # Split the data into train and test sets
+    X_train_NuSVC = X.iloc[train_i]
+    y_train_NuSVC = y.iloc[train_i]
+    X_test_NuSVC = X.iloc[test_i]
+    y_test_NuSVC = y.iloc[test_i]
 
-# Scale the training and test data
-X_train_NuSVC_sc = sc.fit_transform(X_train_NuSVC)
-X_test_NuSVC_sc = sc.transform(X_test_NuSVC)
+    # Scale the training and test data
+    X_train_NuSVC_sc = sc.fit_transform(X_train_NuSVC)
+    X_test_NuSVC_sc = sc.transform(X_test_NuSVC)
 
-# This creates an SVM classifier
-clf_svm = NuSVC(nu=0.07)
-clf_svm.fit(X_train_NuSVC_sc, y_train_NuSVC)
+    # This creates an SVM classifier
+    clf_svm = NuSVC(nu=0.05)
+    clf_svm.fit(X_train_NuSVC_sc, y_train_NuSVC)
 
-# Prepare the performance overview data frame
-df_performance_NuSVC = pd.DataFrame(columns=['fold', 'accuracy', 'precision', 'recall', 'specificity', 'F1', 'roc_auc'])
+    # Prepare the performance overview data frame
+    df_performance_NuSVC = pd.DataFrame(columns=['fold', 'accuracy', 'precision', 'recall', 'specificity', 'F1', 'roc_auc'])
 
-scoring_types = ['accuracy', 'precision', 'recall', 'f1']
- 
-for scoring_type in scoring_types:
-    # Create the GridSearchCV object with the specific scoring type
-    grid_search = GridSearchCV(estimator=nusvc, param_grid=param_grid, cv=5, scoring=scoring_type, refit=False)
+    scoring_types = ['accuracy', 'precision', 'recall', 'f1']
+    '''
+    for scoring_type in scoring_types:
+        # Create the GridSearchCV object with the specific scoring type
+        grid_search = GridSearchCV(estimator=nusvc, param_grid=param_grid, cv=5, scoring=scoring_type, refit=False)
+
+        # Fit the GridSearchCV object to the data
+        grid_search.fit(X_train_NuSVC_sc, y_train_NuSVC)
+
+        # Get the best parameters and best score
+        best_params = grid_search.best_params_
+        best_score = grid_search.best_score_
+
+        # Print the scoring type, best parameters, and best score
+        print("Scoring Type:", scoring_type)
+        print("Best Parameters:", best_params)
+        print("Best Score:", best_score)
+        print("---------------------")    
+    '''
+
+    # Create the NuSVC model with the best parameters
+    nusvc = NuSVC(nu=0.05, degree=4, gamma='scale', kernel='poly')
+
+    # Fit the model to the training data
+    nusvc.fit(X_train_NuSVC_sc, y_train_NuSVC)
+
+    # Predict the labels for the test set
+    y_pred_NuSVC = nusvc.predict(X_test_NuSVC_sc)
+
+    # Calculate the confusion matrix
+    cm = confusion_matrix(y_test_NuSVC, y_pred_NuSVC)
+
+    # Create a ConfusionMatrixDisplay object and plot the confusion matrix
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+    disp.plot()
+
+    # Show the plot
+    plt.show()
+
+    #--------------ROC Curve--------------
+    from sklearn.metrics import roc_curve, precision_recall_curve, auc
+
+    # Fit the model to the training data
+    nusvc.fit(X_train_NuSVC_sc, y_train_NuSVC)
+
+    # Get the scores for the positive class
+    y_scores_NuSVC = nusvc.decision_function(X_test_NuSVC_sc)
+
+
+    # Compute the false positive rate, true positive rate, and threshold for the ROC curve
+    fpr, tpr, thresholds_roc = roc_curve(y_test_NuSVC, y_scores_NuSVC)
+
+    # Compute the precision, recall, and threshold for the precision-recall curve
+    precision, recall, thresholds_pr = precision_recall_curve(y_test_NuSVC, y_scores_NuSVC)
+
+    # Compute the area under the ROC curve
+    roc_auc = auc(fpr, tpr)
+
+    # Plot the ROC curve
+    plt.figure(figsize=(8, 6))
+    plt.plot(fpr, tpr, label='ROC Curve (AUC = %0.2f)' % roc_auc)
+    plt.plot([0, 1], [0, 1], 'r--', label='Random Classifier')
+    plt.xlim([0, 1])
+    plt.ylim([0, 1])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic (ROC) Curve')
+    plt.legend()
+    plt.show()
+
+
+    #-----------
+    import pandas as pd
+    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+
+    # List to store performance metrics for each fold
+    results = []
+
+    # Perform grid search and cross-validation
+    for fold, (train_index, test_index) in enumerate(kfold.split(X, y)):
+        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
     
-    # Fit the GridSearchCV object to the data
-    grid_search.fit(X_train_NuSVC_sc, y_train_NuSVC)
-    
-    # Get the best parameters and best score
-    best_params = grid_search.best_params_
-    best_score = grid_search.best_score_
-    
-    # Print the scoring type, best parameters, and best score
-    print("Scoring Type:", scoring_type)
-    print("Best Parameters:", best_params)
-    print("Best Score:", best_score)
-    print("---------------------")    
-    
-# Create the NuSVC model with the best parameters
-nusvc = NuSVC(nu=0.07, degree=4, gamma='scale', kernel='poly')
+        # Standardize the data
+        X_train_sc = sc.fit_transform(X_train)
+        X_test_sc = sc.transform(X_test)
 
-# Fit the model to the training data
-nusvc.fit
-    
-# Create the NuSVC model with the best parameters
-#nusvc = NuSVC(nu=0.06, degree=2, gamma='auto', kernel='rbf')
+        # Create the NuSVC model with the best parameters
+        nusvc = NuSVC(nu=0.05, degree=4, gamma='scale', kernel='poly')
 
-# Fit the model to the training data
-nusvc.fit(X_train_NuSVC_sc, y_train_NuSVC)
+        # Fit the model to the training data
+        nusvc.fit(X_train_sc, y_train)
 
-# Predict the labels for the test set
-y_pred_NuSVC = nusvc.predict(X_test_NuSVC_sc)
+        # Predict the labels for the test set
+        y_pred = nusvc.predict(X_test_sc)
 
-# Calculate the confusion matrix
-cm = confusion_matrix(y_test_NuSVC, y_pred_NuSVC)
+        # Calculate performance metrics
+        accuracy = accuracy_score(y_test, y_pred)
+        precision = precision_score(y_test, y_pred)
+        recall = recall_score(y_test, y_pred)
+        f1 = f1_score(y_test, y_pred)
+        roc_auc = roc_auc_score(y_test, y_pred)
 
-# Create a ConfusionMatrixDisplay object and plot the confusion matrix
-disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-disp.plot()
+        # Append the results to the list
+        results.append([fold, accuracy, precision, recall, f1, roc_auc])
 
-# Show the plot
-plt.show()
+    # Create a DataFrame from the results list
+    df_performance = pd.DataFrame(results, columns=['fold', 'accuracy', 'precision', 'recall', 'F1', 'roc_auc'])
 
-#--------------ROC Curve--------------
-from sklearn.metrics import roc_curve, precision_recall_curve, auc
+    print(df_performance)
 
-# Fit the model to the training data
-nusvc.fit(X_train_NuSVC_sc, y_train_NuSVC)
-
-# Get the scores for the positive class
-y_scores_NuSVC = nusvc.decision_function(X_test_NuSVC_sc)
-
-# Compute the false positive rate, true positive rate, and threshold for the ROC curve
-fpr, tpr, thresholds_roc = roc_curve(y_test_NuSVC, y_scores_NuSVC)
-
-# Compute the precision, recall, and threshold for the precision-recall curve
-precision, recall, thresholds_pr = precision_recall_curve(y_test_NuSVC, y_scores_NuSVC)
-
-# Compute the area under the ROC curve
-roc_auc = auc(fpr, tpr)
-
-# Plot the ROC curve
 plt.figure(figsize=(8, 6))
-plt.plot(fpr, tpr, label='ROC Curve (AUC = %0.2f)' % roc_auc)
+for i in range(n_splits):
+    plt.plot(fpr_list[i], tpr_list[i], label='Fold {} (AUC = {:.2f})'.format(i+1, auc_list[i]))
+
 plt.plot([0, 1], [0, 1], 'r--', label='Random Classifier')
 plt.xlim([0, 1])
 plt.ylim([0, 1])
 plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
 plt.title('Receiver Operating Characteristic (ROC) Curve')
-plt.legend()
+plt.legend(loc='lower right')
 plt.show()
-
-
-#-----------
-import pandas as pd
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
-
-# List to store performance metrics for each fold
-results = []
-
-# Perform grid search and cross-validation
-for fold, (train_index, test_index) in enumerate(kfold.split(X, y)):
-    X_train, X_test = X.iloc[train_index], X.iloc[test_index]
-    y_train, y_test = y.iloc[train_index], y.iloc[test_index]
-    
-    # Standardize the data
-    X_train_sc = sc.fit_transform(X_train)
-    X_test_sc = sc.transform(X_test)
-
-    # Create the NuSVC model with the best parameters
-    nusvc = NuSVC(nu=0.07, degree=2, gamma='auto', kernel='rbf')
-
-    # Fit the model to the training data
-    nusvc.fit(X_train_sc, y_train)
-
-    # Predict the labels for the test set
-    y_pred = nusvc.predict(X_test_sc)
-
-    # Calculate performance metrics
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    roc_auc = roc_auc_score(y_test, y_pred)
-
-    # Append the results to the list
-    results.append([fold, accuracy, precision, recall, f1, roc_auc])
-
-# Create a DataFrame from the results list
-df_performance = pd.DataFrame(results, columns=['fold', 'accuracy', 'precision', 'recall', 'F1', 'roc_auc'])
-
-print(df_performance)
