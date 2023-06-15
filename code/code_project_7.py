@@ -16,7 +16,7 @@ from sklearn.tree import DecisionTreeClassifier, plot_tree
 from sklearn.svm import SVC, NuSVC, LinearSVC
     # for svm we have different methods see: https://scikit-learn.org/stable/modules/svm.html
 # metrics
-from sklearn.metrics import r2_score, mean_squared_error, roc_curve, confusion_matrix, auc
+from sklearn.metrics import r2_score, mean_squared_error, roc_curve, confusion_matrix, auc, f1_score
 #Label encoder
 from sklearn.preprocessing import LabelEncoder
 # other
@@ -185,39 +185,14 @@ X = data.copy().drop(columns='stroke')
 y = data['stroke']
 
 # ––––––––––––––––––––––––––––––  SStratified K-fold cross validator  ––––––––––––––––––––––––––––––
-n_splits = 10
+n_splits = 5
 kfold = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
-accuracy_scores = []
 rkfold = RepeatedStratifiedKFold(n_splits=n_splits, n_repeats=3, random_state=42)
 
-#loop over splits should then be done in the === Model === section using:
-"""
-for train_i, test_i in skf.split(X, y):
-
-    # Get the relevant subsets for training and testing
-    X_test  = X.iloc[test_i]
-    y_test  = y.iloc[test_i]
-    X_train = X.iloc[train_i]
-    y_train = y.iloc[train_i]
-
-    note: scaling has to be done inside the loop
-"""
 # ==============================  Standardizing/Scaling  ==============================
 sc = StandardScaler()
-'''#create copies like in the tutorial to avoid inplace operations
-X_train_sc, X_test_sc = X_train.copy(), X_test.copy()
 
-X_train_sc[num_cols] = sc.fit_transform(X_train[num_cols])
-X_test_sc[num_cols] = sc.transform(X_test[num_cols])
-'''
 # ==============================  Models  ==============================
-# Be careful that we have different names for our different dataframes (e.g. X_train_LR and X_train_RF)
-
-# ––––––––––––––––––––––––––––––  Logistic Regression  ––––––––––––––––––––––––––––––
-LR = LogisticRegression()
-
-# ––––––––––––––––––––––––––––––  Random Forest  ––––––––––––––––––––––––––––––
-RF = RandomForestClassifier()
 
 # ––––––––––––––––––––––––––––––  Decision Tree  ––––––––––––––––––––––––––––––
 # Hyperparameters for Decision Tree Classifier (for a better overview)
@@ -227,12 +202,13 @@ DT = DecisionTreeClassifier(random_state=42)
 # Create a prameter grid for the max_depth and criterion hyperparameters and save these in a dictionary
 criterion   = ['gini']
 max_depth   = np.arange(1, 21)  # min depth should not be too small (at 1 it will chose this for almost all trees, probably due to overfitting???)
-weights     = [{0:19.6, 1:1}, {0:9.8, 1:1}, {0:1,1:1}, {0:1, 1:9.8}, {0:1, 1:19.6}] # because of class imbalance weighing ~19.6:1 for values 1:0
+#weights     = [{0:1,1:1}, {0:1, 1:9.8}, {0:1, 1:19.6}] # because of class imbalance weighing ~19.6:1 for values 1:0
+weights     = ['balanced'] # because of class imbalance weighing ~19.6:1 for values 1:0
 parameters  = dict(criterion = criterion,
                   max_depth = max_depth,
                   class_weight = weights
                   )
-#scoring     = 
+scoring     = 'f1_macro'
 
 # Prepare the performance overview data frame
 df_performance_DT = pd.DataFrame(columns = ['fold','accuracy','precision','recall','specificity','F1','roc_auc'])
@@ -261,7 +237,7 @@ for train_i, test_i in kfold.split(X, y):
 
     # Train the model with HP tuning
     # Grid Search Crossvalidator
-    GS = GridSearchCV(DT, parameters, n_jobs=-1, cv=kfold, scoring=['precision', 'recall', 'roc_auc'], refit='precision')
+    GS = GridSearchCV(DT, parameters, n_jobs=-1, cv=kfold, scoring=scoring)
     GS.fit(X_train_DT_sc, y_train_DT)
     print('Best criterion:', GS.best_estimator_.get_params()['criterion'])
     print('Best max_depth:', GS.best_estimator_.get_params()['max_depth'])
@@ -269,7 +245,8 @@ for train_i, test_i in kfold.split(X, y):
 
     # Fit the Desicion Tree Classifier with the best hyperparameters (didnt work without fitting again)
     DT_best = DecisionTreeClassifier(criterion=GS.best_estimator_.get_params()['criterion'],
-                                     max_depth=GS.best_estimator_.get_params()['max_depth'])
+                                     max_depth=GS.best_estimator_.get_params()['max_depth'], 
+                                     random_state=42)
     DT_best.fit(X_train_DT_sc, y_train_DT)
 
     # Evaluate the classifier
@@ -297,9 +274,10 @@ ax_DT.set_title('Decision Tree – Receiver Operating Characteristic')
 ax_DT.legend()
 ax_DT.grid(visible=True, which='major', axis='both', color='grey', linestyle=':', linewidth=1)
 plt.tight_layout()
+plt.savefig('../output/ROC_DT.pdf')
 
 print(df_performance_DT)
-df_performance_DT.to_excel('../output/performance.xlsx')
+df_performance_DT.to_excel('../output/performance.xlsx') #to export results to excel
 
 # ––––––––––––––––––––––––––––––  Support Vector Machine  ––––––––––––––––––––––––––––––
 SVM = SVC() #or NuSVC()/ LinearSVC(), for Moreno to decide which one fits best
