@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 # data split and standardizing(/scaling)
-from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV, KFold #je nachdem ob wir KFold brauchen, das weglassen
+from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV, RepeatedStratifiedKFold #je nachdem ob wir KFold brauchen, das weglassen
 from sklearn.preprocessing import StandardScaler
 # the 4 learning models
 from sklearn.linear_model import LogisticRegression
@@ -102,7 +102,7 @@ def evaluation_metrics(clf, y, X, ax,legend_entry='my legendEntry'):
 
     # Plot on the provided axis - feel free to make this plot nicer if
     # you want to.
-    ax.plot(fp_rates, tp_rates, label = 'Fold {}'.format(legend_entry))
+    ax.plot(fp_rates, tp_rates, label = 'Fold {} (AUC = {})'.format(legend_entry, roc_auc))
 
     return [accuracy, precision, recall, specificity, f1_score, roc_auc]
 
@@ -171,12 +171,6 @@ for col in cate_cols:
     data[col] = label_encoder.fit_transform(data[col])
 # is this really better than one-hot encoding ? since there is no order in our categorical variables it should not matter which one we use?
 
-#I dont know if the mapping is important but it could be because some machine learning algorithms can interprete data better with mapping but i am not to familiar with this point. 
-for col in boolean_cols:
-    unique_values = data[col].unique()
-    mapping = {value: index for index, value in enumerate(unique_values)}
-    data[col] = data[col].map(mapping)
-
 # This helps that no more columns are created than before
 columns_to_keep = num_cols + cate_cols + boolean_cols
 data_e = data[columns_to_keep]
@@ -191,9 +185,10 @@ X = data.copy().drop(columns='stroke')
 y = data['stroke']
 
 # ––––––––––––––––––––––––––––––  SStratified K-fold cross validator  ––––––––––––––––––––––––––––––
-n_splits = 5
+n_splits = 10
 kfold = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
 accuracy_scores = []
+rkfold = RepeatedStratifiedKFold(n_splits=n_splits, n_repeats=3, random_state=42)
 
 #loop over splits should then be done in the === Model === section using:
 """
@@ -230,19 +225,26 @@ DT = DecisionTreeClassifier(random_state=42)
 
 # Hyperparameters for Grid Search Crossvalidator
 # Create a prameter grid for the max_depth and criterion hyperparameters and save these in a dictionary
-criterion   = ['gini', 'entropy']
-max_depth   = np.arange(5, 21)  # min depth should not be too small (at 1 it will chose this for almost all trees, probably due to overfitting???)
+criterion   = ['gini']
+max_depth   = np.arange(1, 21)  # min depth should not be too small (at 1 it will chose this for almost all trees, probably due to overfitting???)
+weights     = [{0:19.6, 1:1}, {0:9.8, 1:1}, {0:1,1:1}, {0:1, 1:9.8}, {0:1, 1:19.6}] # because of class imbalance weighing ~19.6:1 for values 1:0
 parameters  = dict(criterion = criterion,
-                  max_depth = max_depth)
+                  max_depth = max_depth,
+                  class_weight = weights
+                  )
+#scoring     = 
 
 # Prepare the performance overview data frame
 df_performance_DT = pd.DataFrame(columns = ['fold','accuracy','precision','recall','specificity','F1','roc_auc'])
 
 # Counter to keep track of fold number
-fold = 0
+fold = 1
 
 # Creating figure
-fig_DT,ax_DT = plt.subplots(1,1,figsize=(9, 9))
+fig_DT,ax_DT = plt.subplots(1,1,figsize=(8, 6))
+
+# Switch for plotting Decision Trees
+pltDT = False # if true DTs are plotted
 
 for train_i, test_i in kfold.split(X, y):
     print('Working on fold ', fold)
@@ -258,10 +260,12 @@ for train_i, test_i in kfold.split(X, y):
     X_test_DT_sc = sc.transform(X_test_DT)
 
     # Train the model with HP tuning
-    GS = GridSearchCV(DT, parameters, cv=10)
+    # Grid Search Crossvalidator
+    GS = GridSearchCV(DT, parameters, n_jobs=-1, cv=kfold, scoring=['precision', 'recall', 'roc_auc'], refit='precision')
     GS.fit(X_train_DT_sc, y_train_DT)
-    print('Best Criterion:', GS.best_estimator_.get_params()['criterion'])
+    print('Best criterion:', GS.best_estimator_.get_params()['criterion'])
     print('Best max_depth:', GS.best_estimator_.get_params()['max_depth'])
+    print('Best class_weight:', GS.best_estimator_.get_params()['class_weight'])
 
     # Fit the Desicion Tree Classifier with the best hyperparameters (didnt work without fitting again)
     DT_best = DecisionTreeClassifier(criterion=GS.best_estimator_.get_params()['criterion'],
@@ -269,17 +273,18 @@ for train_i, test_i in kfold.split(X, y):
     DT_best.fit(X_train_DT_sc, y_train_DT)
 
     # Evaluate the classifier
-    eval_metrics_DT = evaluation_metrics(DT_best, y_test_DT, X_test_DT_sc, ax_DT, legend_entry=str(fold+1))
+    eval_metrics_DT = evaluation_metrics(DT_best, y_test_DT, X_test_DT_sc, ax_DT, legend_entry=str(fold))
     df_performance_DT.loc[len(df_performance_DT), :] = [fold] + eval_metrics_DT
-
+    
     # Plot the decision tree
-    fig = plt.figure(figsize=(50,50)) #use dpi=... to increase resolution
-    DT_plot = plot_tree(GS.best_estimator_,
-                    feature_names=X.columns,
-                    class_names=X.index.astype(str),
-                    filled=True, 
-                    label=str(fold+1))
-
+    if pltDT == True:
+        fig = plt.figure(figsize=(50,50)) #use dpi=... to increase resolution
+        DT_plot = plot_tree(GS.best_estimator_,
+                        feature_names=X.columns,
+                        class_names=X.index.astype(str),
+                        filled=True, 
+                        label=str(fold+1))
+        
     # increase counter for folds
     fold += 1
 
@@ -292,6 +297,9 @@ ax_DT.set_title('Decision Tree – Receiver Operating Characteristic')
 ax_DT.legend()
 ax_DT.grid(visible=True, which='major', axis='both', color='grey', linestyle=':', linewidth=1)
 plt.tight_layout()
+
+print(df_performance_DT)
+df_performance_DT.to_excel('../output/performance.xlsx')
 
 # ––––––––––––––––––––––––––––––  Support Vector Machine  ––––––––––––––––––––––––––––––
 SVM = SVC() #or NuSVC()/ LinearSVC(), for Moreno to decide which one fits best
