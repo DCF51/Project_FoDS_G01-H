@@ -1,132 +1,99 @@
-# ______________________________  Code for the Project of Group G01-H ______________________________
-
 # ==============================  Imports/Packages  ==============================
 # standard packages
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-# data split and standardizing(/scaling)
-from sklearn.model_selection import train_test_split, StratifiedKFold, KFold #je nachdem ob wir KFold brauchen, das weglassen
-from sklearn.preprocessing import StandardScaler
-# the 4 learning models
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import DecisionTreeClassifier
-    # for decision trees see: https://scikit-learn.org/stable/modules/tree.html
-from sklearn.svm import SVC, NuSVC, LinearSVC
-    # for svm we have different methods see: https://scikit-learn.org/stable/modules/svm.html
-# metrics
-from sklearn.metrics import r2_score, mean_squared_error, roc_curve, confusion_matrix, auc
-#Label encoder
-from sklearn.preprocessing import LabelEncoder
 # other
 import warnings
 
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.metrics import ConfusionMatrixDisplay
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, precision_recall_curve
+from sklearn.metrics import confusion_matrix
+# metrics
+from sklearn.metrics import roc_curve, auc
+from sklearn.model_selection import GridSearchCV
+# data split and standardizing(/scaling)
+from sklearn.model_selection import StratifiedKFold  # je nachdem ob wir KFold brauchen, das weglassen
+# Label encoder
+from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import NuSVC
+from imblearn.combine import SMOTEENN
+
 warnings.filterwarnings('ignore')
 
+
 # ==============================  Functions  ==============================
-#only if needed (probably from homeworks/tutorials)
+# Utility function to plot the diagonal line
+def add_identity(axes, *line_args, **line_kwargs):
+    identity, = axes.plot([], [], *line_args, **line_kwargs)
 
-def evaluation_metrics(clf, y, X, ax,legend_entry='my legendEntry'):
-    """
-    compute multiple evaluation metrics for the provided classifier given the true labels
-    and input features. Provides a plot of the roc curve on the given axis with the legend
-    entry for this plot being specified, too.
+    def callback(axes):
+        low_x, high_x = axes.get_xlim()
+        low_y, high_y = axes.get_ylim()
+        low = max(low_x, low_y)
+        high = min(high_x, high_y)
+        identity.set_data([low, high], [low, high])
 
-    :param clf: classifier method
-    :type clf: numpy array
+    callback(axes)
+    axes.callbacks.connect('xlim_changed', callback)
+    axes.callbacks.connect('ylim_changed', callback)
+    return axes
 
-    :param y: true class labels
-    :type y: numpy array
-
-    :param X: feature matrix
-    :type X: numpy array
-
-    :param ax: matplotlib axis to plot on
-    :type legend_entry: matplotlib Axes
-
-    :param legend_entry: the legend entry that should be displayed on the plot
-    :type legend_entry: string
-
-    :return: comfusion matrix comprising the
-             true positives (tp),
-             true negatives  (tn),
-             false positives (fp),
-             and false negatives (fn)
-    :rtype: four integers
-    """
-
-    # Get the label predictions
-    y_test_pred    = clf.predict(X)
-
-    # Calculate the confusion matrix given the predicted and true labels
-    tn, fp, fn, tp = confusion_matrix(y, y_test_pred).ravel()
-
-
-    # Calculate the evaluation metrics
-    precision   = tp/(tp+fp)
-    specificity = tn/(tn+fp)
-    accuracy    = (tp+tn)/(tp+tn+fp+fn)
-    recall      = tp/(tp+fn)
-    f1          = tp/(tp+0.5*(fn+fp))
-
-    # Get the roc curve using a sklearn function
-    y_test_predict_proba  = clf.predict_proba(X)
-    fp_rates, tp_rates, _ = roc_curve(y, y_test_predict_proba[:,1]) # i want the predictioin probability for the class "1"
-
-    # Calculate the area under the roc curve using a sklearn function
-    roc_auc = auc(fp_rates, tp_rates)
-
-    # Plot on the provided axis - feel free to make this plot nicer if
-    # you want to.
-    ax.plot(fp_rates, tp_rates, label = 'Fold {}'.format(legend_entry))
-
-    return [accuracy,precision,recall,specificity,f1, roc_auc]
-
+def specificity_score(y_true, y_pred):
+    cm = confusion_matrix(y_true, y_pred)
+    TN = cm[0, 0]
+    FP = cm[0, 1]
+    specificity = TN / (TN + FP)
+    return specificity
 
 # ==============================  Import data  ==============================
 data = pd.read_csv(
     filepath_or_buffer='../data/healthcare-dataset-stroke-data.csv',
     index_col='id',
-    dtype= {'gender':object, 'age':float, 'hypertension':bool, 'heart_disease':bool,
-            'ever_married':object, 'work_type':object, 'Residence_type':object, 
-            'avg_glucose_level':float, 'bmi':float, 'smoking_status':object, 'stroke':bool}
-            )
+    dtype={'gender': object, 'age': float, 'hypertension': bool, 'heart_disease': bool,
+           'ever_married': object, 'work_type': object, 'Residence_type': object,
+           'avg_glucose_level': float, 'bmi': float, 'smoking_status': object, 'stroke': bool}
+)
 
 # ==============================  Define datatypes  ==============================
-#as categorical if needed
+# as categorical if needed
 data['gender'] = pd.Categorical(data['gender'])
 data['work_type'] = pd.Categorical(data['work_type'])
 data['Residence_type'] = pd.Categorical(data['Residence_type'])
 data['smoking_status'] = pd.Categorical(data['smoking_status'])
 
-#change 'ever_married' to boolean
+# change 'ever_married' to boolean
 data['ever_married'] = data['ever_married'].map({'Yes': True, 'No': False})
-data['ever_married'].astype(bool)
+data['ever_married'] = data['ever_married'].astype(bool)
 
 # ==============================  Data description  ==============================
 # Shape and meaning of dataframe -- df.info(), df.shape[], df.columns, df.head()
 data.info()
-print('There are ', data.shape[1],'columns in the data.')
-print('There are ', data.shape[0],'rows in the data.')
+print('There are ', data.shape[1], 'columns in the data.')
+print('There are ', data.shape[0], 'rows in the data.')
 
-#data.columns not necessary because already included in data.info()
+# data.columns not necessary because already included in data.info()
 
 # Datatypes -- df.info() and df.dtypes
-#data.dtypes not necessary because already included in data.info()
+# data.dtypes not necessary because already included in data.info()
 
 # Missing Data -- df.isna().sum()
 print('missing values:')
-print(data.isna().sum()) ###bmi has 201 missing values
-data = data.dropna(subset=['bmi']) #This drops the rows which have a missing value in bmi 
+print(data.isna().sum())  ###bmi has 201 missing values
+# Calculate the mean or median of the "bmi" feature
+bmi_mean = data['bmi'].mean()
+bmi_median = data['bmi'].median()
+print(bmi_mean)
+print(bmi_median)
+# Replace the missing values with the mean or median
+data['bmi'].fillna(bmi_mean, inplace=True)
+print(data.isna().sum())
 
 # Brief summary of extremes/means/medians -- df.describe()
-
 print(data.describe())
 
 # Check for duplicate rows -- df.duplicated()
-print('sum of duplicated lines is:', data.duplicated().sum()) #marks all duplicates except the first occurence
-
+print('sum of duplicated lines is:', data.duplicated().sum())  # marks all duplicates except the first occurence
 # ==============================  Data manipulation  ==============================
 # Identify the categorical (cat_cols), numerical features (num_cols) and boolean features (boolean_cols)
 num_cols = ['age', 'avg_glucose_level', 'bmi']
@@ -141,70 +108,199 @@ label_encoder = LabelEncoder()
 for col in cate_cols:
     data[col] = label_encoder.fit_transform(data[col])
 
-#I dont know if the mapping is important but it could be because some machine learning algorithms can interprete data better with mapping but i am not to familiar with this point. 
-for col in boolean_cols:
-    unique_values = data[col].unique()
-    mapping = {value: index for index, value in enumerate(unique_values)}
-    data[col] = data[col].map(mapping)
-    
 # This helps that no more columns are created than before
 columns_to_keep = num_cols + cate_cols + boolean_cols
 data_e = data[columns_to_keep]
-
-# ==============================  Feature selection  ==============================
-# don't know what exactly to use here yet
 
 # ==============================  Data split  ==============================
 
 X = data.copy().drop(columns='stroke')
 y = data['stroke']
 
-# We have two options for the split: "normal" train_test_split() or StratifiedKFold()
-# ––––––––––––––––––––––––––––––  "Normal" split  ––––––––––––––––––––––––––––––
-#Hyperparameters for "normal split"
-test_size = 0.2
 
-# Splitting
-X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42, test_size=test_size)
-print('Training set size: {}, test set size: {}'.format(len(X_train), len(X_test)))
-# here no loop is required and Scaling can be done outside the loop
+#-------------------- Bar plot for Stroke and No Stroke ------------------------------
+# Assuming your dataset is stored in a DataFrame called 'df'
+stroke_counts = data['stroke'].value_counts()
+
+# Filter the categories to include only 'Stroke' and 'No Stroke'
+stroke_counts = stroke_counts.loc[[0, 1]]
+
+# Define colors for the bars
+colors = ['steelblue', 'lightgray']
+
+# Create a bar plot
+plt.bar(stroke_counts.index, stroke_counts.values, color=colors)
+
+# Add labels and title
+plt.xlabel('Stroke')
+plt.ylabel('Count')
+plt.title('Number of People with and without Stroke')
+
+
+#With the help of Smote we perform a resampling
+# Perform resampling
+sampler = SMOTEENN(random_state=42)
+X_resampled, y_resampled = sampler.fit_resample(X, y)
+
+# Check the class distribution after resampling
+print(pd.Series(y_resampled).value_counts())
 
 # ––––––––––––––––––––––––––––––  SStratified K-fold cross validator  ––––––––––––––––––––––––––––––
-# Hyperparameters for the split and preparation (Stratified K-fold cross validator)
-n_splits = 10
-skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+n_splits = 5
+kfold = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+accuracy_scores = []
 
-#loop over splits should then be done in the === Model === section using:
-"""
-for train_i, test_i in skf.split(X, y):
-
-    # Get the relevant subsets for training and testing
-    X_test  = X.iloc[test_i]
-    y_test  = y.iloc[test_i]
-    X_train = X.iloc[train_i]
-    y_train = y.iloc[train_i]
-
-    note: scaling has to be done inside the loop
-"""
-# ==============================  Standardizing/Scaling  ==============================
+# ----------------------------  Standardizing/Scaling  ---------------------------------
 sc = StandardScaler()
-#create copies like in the tutorial to avoid inplace operations
-X_train_sc, X_test_sc = X_train.copy(), X_test.copy()
+# create copies like in the tutorial to avoid inplace operations
 
-X_train_sc[num_cols] = sc.fit_transform(X_train[num_cols])
-X_test_sc[num_cols] = sc.transform(X_test[num_cols])
+# Add value labels on top of each bar
+for i, count in enumerate(stroke_counts.values):
+    plt.text(i, count, str(count), ha='center', va='bottom')
 
-# ==============================  Models  ==============================
-# Be careful that we have different names for our different dataframes (e.g. X_train_LR and X_train_RF)
+# Modify the legend labels and colors
+legend_labels = ['No Stroke', 'Stroke']
+legend_colors = [colors[0], colors[1]]
 
-# ––––––––––––––––––––––––––––––  Logistic Regression  ––––––––––––––––––––––––––––––
-LR = LogisticRegression()
+# Add a legend with modified labels, colors, and increased font size
+plt.legend(handles=[plt.Rectangle((0, 0), 1, 1, color=color) for color in legend_colors],
+           labels=legend_labels,
+           fontsize='medium', frameon=False)
+plt.xticks([])
+# Save the plot
+plt.savefig("../data/Output/class imbalance.png")
 
-# ––––––––––––––––––––––––––––––  Random Forest  ––––––––––––––––––––––––––––––
-RF = RandomForestClassifier()
 
-# ––––––––––––––––––––––––––––––  Decision Tree  ––––––––––––––––––––––––––––––
-DT = DecisionTreeClassifier()
+# Counter to keep track of fold number
+fold_count = 0
 
-# ––––––––––––––––––––––––––––––  Support Vector Machine  ––––––––––––––––––––––––––––––
-SVM = SVC() #or NuSVC()/ LinearSVC(), for Moreno to decide which one fits best
+# Create empty lists to store the data for each fold
+fpr_list = []
+tpr_list = []
+auc_list = []
+
+for fold, (train_i, test_i) in enumerate(kfold.split(X, y)):
+    fold_count += 1
+    # Create the NuSVC model with the best parameters
+    nusvc = NuSVC(nu=0.07, degree=2, gamma='auto', kernel='rbf', random_state=42)
+
+    # Split the data into train and test sets
+    X_train_NuSVC = X_resampled.iloc[train_i]
+    y_train_NuSVC = y_resampled.iloc[train_i]
+    X_test_NuSVC = X_resampled.iloc[test_i]
+    y_test_NuSVC = y_resampled.iloc[test_i]
+
+    # Scale the training and test data
+    X_train_NuSVC_sc = sc.fit_transform(X_train_NuSVC)
+    X_test_NuSVC_sc = sc.transform(X_test_NuSVC)
+
+    # This creates an SVM classifier
+    clf_svm = NuSVC(nu=0.07)
+    clf_svm.fit(X_train_NuSVC_sc, y_train_NuSVC)
+
+    # Prepare the performance overview data frame
+    df_performance_NuSVC = pd.DataFrame(
+        columns=['fold', 'accuracy', 'precision', 'recall', 'specificity', 'F1', 'roc_auc'])
+    scoring_types = ['accuracy', 'precision', 'recall', 'f1']
+    # Fit the model to the training data
+    nusvc.fit(X_train_NuSVC_sc, y_train_NuSVC)
+
+    # Predict the labels for the test set
+    y_pred_NuSVC = nusvc.predict(X_test_NuSVC_sc)
+
+    # Calculate the confusion matrix
+    cm = confusion_matrix(y_test_NuSVC, y_pred_NuSVC)
+
+    # Plot the confusion matrix
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+    disp.plot()
+
+    # Save the confusion matrix plot with a specific filename
+    confusion_matrix_filename = f'../data/Output/Confusion Matrix SVM {fold_count}.png'
+    plt.savefig(confusion_matrix_filename)
+    plt.close()  # Close the plot to free up memory
+
+    # Show the plot
+    #plt.show()
+    # Calculate the confusion matrix
+
+    # --------------ROC Curve--------------
+    # Fit the model to the training data
+    nusvc.fit(X_train_NuSVC_sc, y_train_NuSVC)
+
+    # Get the scores for the positive class
+    y_scores_NuSVC = nusvc.decision_function(X_test_NuSVC_sc)
+
+    # Compute the false positive rate, true positive rate, and threshold for the ROC curve
+    fpr, tpr, thresholds_roc = roc_curve(y_test_NuSVC, y_scores_NuSVC)
+
+    # Compute the precision, recall, and threshold for the precision-recall curve
+    precision, recall, thresholds_pr = precision_recall_curve(y_test_NuSVC, y_scores_NuSVC)
+
+    # Compute the area under the ROC curve
+    roc_auc = auc(fpr, tpr)
+
+    # Append the data to the lists
+    fpr_list.append(fpr)
+    tpr_list.append(tpr)
+    auc_list.append(roc_auc)
+    # --------------- This leads to the building of a ----------------
+    # List to store performance metrics for each fold
+    results = []
+
+    # Perform grid search and cross-validation
+    # Calculate performance metrics
+    accuracy = accuracy_score(y_test_NuSVC, y_pred_NuSVC)
+    precision = precision_score(y_test_NuSVC, y_pred_NuSVC)
+    recall = recall_score(y_test_NuSVC, y_pred_NuSVC)
+    f1 = f1_score(y_test_NuSVC, y_pred_NuSVC)
+    specificity = specificity_score(y_test_NuSVC, y_pred_NuSVC)
+#Specificity = tn / (tn + fp)
+
+
+    # Append the results to the list
+    results.append([fold, accuracy, precision, recall, specificity, f1, roc_auc])
+
+    # Create a DataFrame from the results list
+    df_performance = pd.DataFrame(results, columns=['fold', 'accuracy', 'precision', 'recall', 'specificity', 'F1', 'roc_auc'])
+    # Add Specificity as well
+    print(df_performance)
+
+# Define the parameter grid
+param_grid = {
+    'nu': [0.05, 0.06, 0.07],
+    'kernel': ['linear', 'rbf', 'poly'],
+    'gamma': ['scale', 'auto'],
+    'degree': [2, 3, 4]
+}
+
+for scoring_type in scoring_types:
+    # Create the GridSearchCV object with the specific scoring type
+    grid_search = GridSearchCV(estimator=nusvc, param_grid=param_grid, cv=5, scoring=scoring_type, refit=False)
+
+    # Fit the GridSearchCV object to the data
+    grid_search.fit(X_train_NuSVC_sc, y_train_NuSVC)
+
+    # Get the best parameters and best score
+    best_params = grid_search.best_params_
+    best_score = grid_search.best_score_
+
+    # Print the scoring type, best parameters, and best score
+    print("Scoring Type:", scoring_type)
+    print("Best Parameters:", best_params)
+    print("Best Score:", best_score)
+    print("---------------------")
+
+
+plt.figure(figsize=(8, 6))
+for i in range(n_splits):
+    plt.plot(fpr_list[i], tpr_list[i], label='Fold {} (AUC = {:.2f})'.format(i+1, auc_list[i]))
+
+plt.plot([0, 1], [0, 1], 'r--', label='Random Classifier')
+plt.xlim([0, 1])
+plt.ylim([0, 1])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver Operating Characteristic (ROC) Curve')
+plt.legend(loc='lower right')
+plt.savefig("../data/Output/ROC_SVM.png")
