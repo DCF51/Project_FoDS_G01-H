@@ -375,10 +375,10 @@ plt.title('Top 10 Most Important Features', fontsize=18)
 plt.xticks(rotation=45, ha='center', fontsize=12)
 plt.ylim(bottom=0)  # Set the bottom limit of the y-axis to 0
 plt.tight_layout()  # Adjust spacing between subplots and labels
-plt.show()
 
 # Store feature importance and standard deviation in the performance overview data frame
 data_performance['feature_importance'] = pd.Series(feature_importance)
 data_performance['std_importance'] = pd.Series(std_importance)
 plt.savefig('../output/Top 10 Most Important Features (RF).png')
+plt.show()
 
