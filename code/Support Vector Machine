@@ -255,7 +255,7 @@ for fold, (train_i, test_i) in enumerate(kfold.split(X, y)):
     recall = recall_score(y_test_NuSVC, y_pred_NuSVC)
     f1 = f1_score(y_test_NuSVC, y_pred_NuSVC)
     specificity = specificity_score(y_test_NuSVC, y_pred_NuSVC)
-#Specificity = tn / (tn + fp)
+
 
 
     # Append the results to the list
