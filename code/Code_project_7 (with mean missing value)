@@ -242,7 +242,7 @@ data_e = data[columns_to_keep]
 data = pd.get_dummies(data)
 data.head()
 
-# ==========================Imbalanced ============================
+#======================Normal Spkir or K-Fold?========================
 # Assuming your target variable is named 'stroke'
 class_counts = data['stroke'].value_counts()
 class_proportions = data['stroke'].value_counts(normalize=True)
@@ -254,6 +254,8 @@ print("\nClass Proportions:")
 print(class_proportions)
 print("% of people who actualy got a stroke : ",(data['stroke'].value_counts()[1]/data['stroke'].value_counts().sum()).round(3)*100)
 
+#So we can see there are 4861 of non-stroke and 249 with stroke. So the majority has no stroke. In the class proportions we can see the porportion of 'Flase' is 0.9513 --> 95.13% of the data. The porportion of 'True' is 0.0487 --> 4.87% of the data
+# ==>highly imbalanced: So stratified K-Fold Cross-Valdidator would be the better option
 
 # ==============================  Data split  ==============================
 
@@ -261,7 +263,7 @@ X = data.copy().drop(columns='stroke')
 y = data['stroke']
 
 #=======================SMOTE=================================
-sm = SMOTE(random_state=111)
+sm = SMOTE(random_state=42)
 X_sm , y_sm = sm.fit_resample(X,y)
 
 print(f'''Shape of X before SMOTE:{X.shape}
@@ -269,20 +271,6 @@ Shape of X after SMOTE:{X_sm.shape}''',"\n\n")
 
 print(f'''Target Class distributuion before SMOTE:\n{y.value_counts(normalize=True)}
 Target Class distributuion after SMOTE :\n{y_sm.value_counts(normalize=True)}''')
-
-
-# ======================Normal Spkir or K-Fold?========================
-class_counts = data['stroke'].value_counts()
-class_proportions = data['stroke'].value_counts(normalize=True)
-
-print("Class Counts:")
-print(class_counts)
-
-print("\nClass Proportions:")
-print(class_proportions)
-
-#So we can see there are 4861 of non-stroke and 249 with stroke. So the majority has no stroke. In the class proportions we can see the porportion of 'Flase' is 0.9513 --> 95.13% of the data. The porportion of 'True' is 0.0487 --> 4.87% of the data
-==>highly imbalanced: So stratified K-Fold Cross-Valdidator would be the better option
 
 # ========================= Hyperparameter Tuning ===========================
 kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
@@ -296,182 +284,101 @@ param_grid = {
 
 rf_classifier = RandomForestClassifier(random_state=1)
 grid_search = GridSearchCV(rf_classifier, param_grid, cv=kfold)
-grid_search.fit(X, y)
+grid_search.fit(X_sm, y_sm)
+best_params = grid_search.best_params_
 
 # Print the best parameters for each parameter in the param_grid
 for param_name in param_grid:
     print(f"Best {param_name}: {grid_search.best_params_[param_name]}")
     
-# ––––––––––––––––––––––––––––––  SStratified K-fold cross validator  ––––––––––––––––––––––––––––––
+#===================  SStratified K-fold cross validator ========================
 
 kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 accuracy_scores = []
-best_params_list = []
-
-#Hyperparameter Tuning FIRST USE THESE AFTER DEFINE THE BEST PARAMETERS
-param_grid = {
-    'n_estimators': [100, 200, 300],
-    'max_depth': [None, 5, 10],
-    'min_samples_split': [2, 5, 10],
-    'max_features': ['auto','sqrt', 'log2']
-}
-# Majority parameter values
-param_grid = {
-    'max_depth': [5],
-    'max_features': ['auto'],
-    'min_samples_split': [2],
-    'n_estimators': [100]
-}
-
 # Prepare the performance overview data frame
-df_performance = pd.DataFrame(columns = ['fold','clf','accuracy','precision','recall',
-                                         'specificity','F1','roc_auc'])
+data_performance = pd.DataFrame(columns=['fold', 'clf', 'accuracy', 'precision', 'recall', 'specificity', 'F1', 'roc_auc'])
 
 all_importance = pd.DataFrame(index=range(0, 5), columns=X.columns)
-
-# Use this counter to save your performance metrics for each crossvalidation fold
+# Use this counter to save your performance metrics for each cross-validation fold
 # also plot the roc curve for each model and fold into a joint subplot
 fold = 0
-fig,axs = plt.subplots(1,2,figsize=(9, 4))
+fig, ax = plt.subplots( figsize=(5, 4))
+model_names = ['Random Forest']  # Specify model names here
+for train_index, test_index in kfold.split(X_sm, y_sm):
+    X_train, X_test = X_sm.iloc[train_index], X_sm.iloc[test_index]
+    y_train, y_test = y_sm.iloc[train_index], y_sm.iloc[test_index]
 
-# ==============================  Models  ==============================
-# Be careful that we have different names for our different dataframes (e.g. X_train_LR and X_train_RF)
-
-for train_index, test_index in kfold.split(X, y):
-    X_train, X_test = X.iloc[train_index], X.iloc[test_index]
-    y_train, y_test = y.iloc[train_index], y.iloc[test_index]
-    
     # ----------------------------  Standardizing/Scaling  ---------------------------------
     sc = StandardScaler()
-    #create copies like in the tutorial to avoid inplace operations
+    # create copies like in the tutorial to avoid inplace operations
     X_train_sc, X_test_sc = X_train.copy(), X_test.copy()
 
     X_train_sc[num_cols] = sc.fit_transform(X_train[num_cols])
     X_test_sc[num_cols] = sc.transform(X_test[num_cols])
-    
-    # ––––––––––––––––––––––––––––––  Random Forest  FIRST FOR PREDICTING BEST PARAMETERS ––––––––––––––––––––––––––––––
-    rf_classifier = GridSearchCV(RandomForestClassifier(random_state=1),param_grid,cv=kfold)
+
+    # ––––––––––––––––––––––––––––––  Random Forest  ––––––––––––––––––––––––––––––
+    rf_classifier = RandomForestClassifier(random_state=1, **best_params)
     
     #Fit the model
     rf_classifier.fit(X_train_sc, y_train)
-   
-    # Get the best parameters --> Needed for the best parameters
-    best_params = rf_classifier.best_params_
-    best_params_list.append(best_params)  # Store the best parameters
-    # Use the best parameters to create the final model
-    rf_model = RandomForestClassifier(random_state=1, **best_params)
-    
-    #Make prediction using the final model
-    y_pred = rf_model.predict(X_test)
+
+    #Make prediction using the final model 
+    y_pred = rf_classifier.predict(X_test)
     
     #Calculate accuracy and store it 
     accuracy = accuracy_score(y_test, y_pred)
     accuracy_scores.append(accuracy)
     
-   
-    # ––––––––––––––––––––––––––––––  Logistic Regression  ––––––––––––––––––––––––––––––
-    log_reg_classifier = LogisticRegression()
-    log_reg_classifier.fit(X_train_sc, y_train)
-    
-    # Make predictions
-    y_pred_log_reg = log_reg_classifier.predict(X_test)
-    
-    # Calculate feature importance
-    coefficients = log_reg_classifier.coef_
-    importance = np.abs(coefficients)
-    importance_scores = (importance / np.sum(importance))
-    all_importance.loc[fold] = importance_scores
-    
-    # ––––––––––––––––––––––––––––––  Decision Tree  ––––––––––––––––––––––––––––––
-    DT = DecisionTreeClassifier()
+    # ––––––––––––––––––––––––––––––  Evaluate your classifiers  –––––––––––––––
+    eval_metrics_rf = evaluation_metrics(rf_classifier, y_test, X_test_sc, ax, legend_entry=str(fold))
+    all_importance.loc[fold] = rf_classifier.feature_importances_
+    data_performance.loc[len(data_performance), :] = [fold, 'Random Forest'] + eval_metrics_rf
 
-    # ––––––––––––––––––––––––––––––  Support Vector Machine  ––––––––––––––––––––––––––––––
-    SVM = SVC() #or NuSVC()/ LinearSVC(), for Moreno to decide which one fits best
-    
-    # ––––––––––––––––––––––––––––––  Evaluate your classifiers  ––––––––––––––––––––––––––––––
-    eval_metrics = evaluation_metrics(log_reg_classifier, y_test, X_test_sc, axs[0],legend_entry=str(fold))
-    df_performance.loc[len(df_performance),:] = [fold,'Logistic Regression'] + eval_metrics
-
-    eval_metrics_RF = evaluation_metrics(rf_classifier, y_test, X_test_sc, axs[1],legend_entry=str(fold))
-    df_performance.loc[len(df_performance), :] = [fold, 'Random Forest'] + eval_metrics_RF
     
     # increase counter for folds
     fold += 1
-    
-# Edit the plot and make it nice
-model_names = ['Logistic Regression','Random Forest']
-for i,ax in enumerate(axs):
-    ax.set_xlabel("FPR")
-    ax.set_ylabel("TPR")
-    add_identity(ax, color="r", ls="--",label = 'random\nclassifier')
-    ax.set_title(f"ROC curve {model_names[i]}")
-    ax.grid(True, linestyle = "--", linewidth = 0.5, alpha = 0.7)
-    ax.legend(loc="lower right")
 
 mean_accuracy = np.mean(accuracy_scores)
-   
-#===========================Best Parameter for Hyperparameter tuning ==============
-#This is only needed in the beginning--> WITH THIS WE CAN TAKE THE BEST PARAMETERS FOR THE CODE ABOVE.
-best_params_list
+ax.set_xlabel("FPR")
+ax.set_ylabel("TPR")
+add_identity(ax, color="r", ls="--", label='random\nclassifier')
+ax.grid(True, linestyle="--", linewidth=0.5, alpha=0.7)
+ax.set_title("Receiver Operating Characteristic RF")
+ax.legend(loc="lower right")
+plt.savefig('../output/Random Forest - Receiver Operating Characteristic .png')
 
-# Create a dictionary to store the majority values for each parameter
-majority_values = {}
 
-# Iterate over the parameters in the first parameter dictionary
-for param in best_params_list[0]:
-    # Create a list to store the parameter values
-    param_values = [params[param] for params in best_params_list]
-    # Count the occurrences of each value
-    param_counter = Counter(param_values)
-    # Find the majority value(s)
-    majority_value = [value for value, count in param_counter.items() if count == max(param_counter.values())]
-    # Store the majority value(s) in the dictionary
-    majority_values[param] = majority_value
-
-# Print the majority values
-print("Majority Values:")
-for param, value in majority_values.items():
-    print(f"{param}: {value}")
-#As we can see here these are the parameters which appear as the best in the majority of the folds --> So we can take these values for the k-fold crossvalidation
 # ===========================  Summarize the folds  ================================
-print(df_performance.groupby(by = 'clf').agg(['mean', 'std']))
+data_performance 
+
+data_performance.groupby(by = 'clf').agg(['mean', 'std'])
 
 display(all_importance)
 
-# Visualize the normalized feature importance across the five folds and add error bar to indicate the std
-fig, ax = plt.subplots(figsize=(12, 6))
-
-ax.bar(np.arange(importance_scores.shape[1]), all_importance.mean(), yerr=all_importance.std())
-ax.set_xticks(np.arange(importance_scores.shape[1]), X.columns.tolist(), rotation=45)
-ax.set_title("Normalized feature importance for LR across 5 folds", fontsize=20)
-plt.xlabel('Risk Factors', fontsize=16)
-plt.ylabel("Normalized feature importance", fontsize=16)
-plt.show()
-
 # ================================ Feature importance for Random Forest =================
-feature_importance = rf_model.feature_importances_
-std_importance = np.std([tree.feature_importances_ for tree in rf_model.estimators_], axis=0)
+feature_importance = rf_classifier.feature_importances_
+std_importance = np.std([tree.feature_importances_ for tree in rf_classifier.estimators_], axis=0)
 
-plt.figure(figsize=(12, 6))
-plt.bar(X_train.columns, feature_importance)
-plt.errorbar(X_train.columns, feature_importance, yerr=std_importance, fmt='none', color='black', capsize=3)
-plt.xlabel('Features')
-plt.ylabel('Feature Importance')
-plt.title('Random Forest Feature Importance')
-plt.xticks(rotation=45, ha='center')
+# Sort the feature importance in descending order and select the top 10 features
+top_features_indices = np.argsort(feature_importance)[::-1][:10]
+top_features = X.columns[top_features_indices]
+top_importance = feature_importance[top_features_indices]
+top_std_importance = std_importance[top_features_indices]
+
+# Plot the top 10 most important features
+plt.figure(figsize=(18, 6))
+plt.bar(top_features, top_importance)
+plt.errorbar(top_features, top_importance, yerr=top_std_importance, fmt='none', color='black', capsize=3)
+plt.xlabel('Features', fontsize=14)
+plt.ylabel('Feature Importance', fontsize=14)
+plt.title('Top 10 Most Important Features', fontsize=18)
+plt.xticks(rotation=45, ha='center', fontsize=12)
 plt.ylim(bottom=0)  # Set the bottom limit of the y-axis to 0
+plt.tight_layout()  # Adjust spacing between subplots and labels
 plt.show()
 
 # Store feature importance and standard deviation in the performance overview data frame
-df_performance['feature_importance'] = feature_importance
-df_performance['std_importance'] = std_importance
+data_performance['feature_importance'] = pd.Series(feature_importance)
+data_performance['std_importance'] = pd.Series(std_importance)
+plt.savefig('../output/Top 10 Most Important Features (RF).png')
 
-
-# ==============================  Models  ==============================
-# Be careful that we have different names for our different dataframes (e.g. X_train_LR and X_train_RF)
-
-# ––––––––––––––––––––––––––––––  Decision Tree  ––––––––––––––––––––––––––––––
-DT = DecisionTreeClassifier()
-
-# ––––––––––––––––––––––––––––––  Support Vector Machine  ––––––––––––––––––––––––––––––
-SVM = SVC() #or NuSVC()/ LinearSVC(), for Moreno to decide which one fits best
