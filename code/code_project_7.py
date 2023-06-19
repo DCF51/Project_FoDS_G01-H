@@ -168,7 +168,7 @@ plt.legend(handles=[plt.Rectangle((0, 0), 1, 1, color=color) for color in legend
            fontsize='medium', frameon=False)
 plt.xticks([])
 # Save the plot
-plt.savefig("../data/Output/class imbalance.png")
+plt.savefig("../Output/class imbalance.png")
 
 
 # Counter to keep track of fold number
@@ -216,7 +216,7 @@ for fold, (train_i, test_i) in enumerate(kfold.split(X, y)):
     disp.plot()
 
     # Save the confusion matrix plot with a specific filename
-    confusion_matrix_filename = f'../data/Output/Confusion Matrix SVM {fold_count}.png'
+    confusion_matrix_filename = f'../Output/Confusion Matrix SVM {fold_count}.png'
     plt.savefig(confusion_matrix_filename)
     plt.close()  # Close the plot to free up memory
 
@@ -303,4 +303,4 @@ plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
 plt.title('Receiver Operating Characteristic (ROC) Curve')
 plt.legend(loc='lower right')
-plt.savefig("../data/Output/ROC_SVM.png")
+plt.savefig("../Output/ROC_SVM.png")
