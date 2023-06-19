@@ -199,7 +199,7 @@ plt.savefig('../output/Glucose Level Distribution.png')
 # Gender
 data['gender'].value_counts()
 data = data[data['gender'] != 2]
-#Because we only have 1 instance of "other" gender we will remove it to reduce the dimension of age 
+#Because we only have 1 instance of "other" gender we will remove it to reduce the dimension of gender 
 
 #Smoking
 data['smoking_status'].value_counts()
