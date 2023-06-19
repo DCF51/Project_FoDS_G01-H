@@ -17,6 +17,8 @@ from sklearn.svm import SVC, NuSVC, LinearSVC
     # for svm we have different methods see: https://scikit-learn.org/stable/modules/svm.html
 # metrics
 from sklearn.metrics import r2_score, mean_squared_error, roc_curve, confusion_matrix, auc
+#Label encoder
+from sklearn.preprocessing import LabelEncoder
 # other
 import warnings
 
@@ -116,6 +118,7 @@ print('There are ', data.shape[0],'rows in the data.')
 # Missing Data -- df.isna().sum()
 print('missing values:')
 print(data.isna().sum()) ###bmi has 201 missing values
+data = data.dropna(subset=['bmi']) #This drops the rows which have a missing value in bmi 
 
 # Brief summary of extremes/means/medians -- df.describe()
 
@@ -125,12 +128,28 @@ print(data.describe())
 print('sum of duplicated lines is:', data.duplicated().sum()) #marks all duplicates except the first occurence
 
 # ==============================  Data manipulation  ==============================
-# Identify the categorical (cat_cols) and numerical features (num_cols)
+# Identify the categorical (cat_cols), numerical features (num_cols) and boolean features (boolean_cols)
 num_cols = ['age', 'avg_glucose_level', 'bmi']
 cate_cols = ['gender', 'work_type', 'Residence_type', 'smoking_status']
+boolean_cols = ['hypertension', 'heart_disease', 'ever_married', 'stroke']
 
-# One-hot encoding (if needed)
-data_e = pd.get_dummies(data=data, columns=cate_cols, drop_first=True)
+# Convert boolean columns to integers (0 or 1)
+data[boolean_cols] = data[boolean_cols].astype(int)
+
+# This replaces the categorical columns with their corresponding encoded numerical values
+label_encoder = LabelEncoder()
+for col in cate_cols:
+    data[col] = label_encoder.fit_transform(data[col])
+
+#I dont know if the mapping is important but it could be because some machine learning algorithms can interprete data better with mapping but i am not to familiar with this point. 
+for col in boolean_cols:
+    unique_values = data[col].unique()
+    mapping = {value: index for index, value in enumerate(unique_values)}
+    data[col] = data[col].map(mapping)
+    
+# This helps that no more columns are created than before
+columns_to_keep = num_cols + cate_cols + boolean_cols
+data_e = data[columns_to_keep]
 
 # ==============================  Feature selection  ==============================
 # don't know what exactly to use here yet
